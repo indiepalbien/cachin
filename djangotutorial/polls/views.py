@@ -18,6 +18,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.utils import timezone as dj_timezone
 from decimal import Decimal, InvalidOperation
 import datetime
+from django.core.paginator import Paginator
 
 @login_required
 @require_POST
@@ -182,10 +183,26 @@ class OwnerListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         model_name = self.model._meta.model_name
+        plural_map = {
+            "category": "categories",
+            "project": "projects",
+            "payee": "payees",
+            "source": "sources",
+            "exchange": "exchanges",
+            "balance": "balances",
+            "transaction": "transactions",
+        }
+        plural = plural_map.get(model_name, model_name + "s")
         ctx["create_url_name"] = f"polls:manage_{model_name}_add"
         ctx["edit_url_name"] = f"polls:manage_{model_name}_edit"
+        ctx["delete_url_name"] = f"polls:manage_{model_name}_delete"
+        ctx["list_url"] = reverse(f"polls:manage_{plural}") if plural else None
         # Provide a safe verbose name for templates (avoid accessing _meta from templates)
         ctx["model_verbose_name_plural"] = self.model._meta.verbose_name_plural
+        try:
+            ctx["back_url"] = reverse("profile")
+        except Exception:
+            ctx["back_url"] = None
         return ctx
 
 
@@ -197,14 +214,68 @@ class OwnerCreateView(LoginRequiredMixin, CreateView):
         ctx = super().get_context_data(**kwargs)
         # provide a safe verbose name for templates
         ctx["model_verbose_name"] = self.model._meta.verbose_name
+        model_name = self.model._meta.model_name
+        plural_map = {
+            "category": "categories",
+            "project": "projects",
+            "payee": "payees",
+            "source": "sources",
+            "exchange": "exchanges",
+            "balance": "balances",
+            "transaction": "transactions",
+        }
+        plural = plural_map.get(model_name, model_name + "s")
+        ctx["list_url"] = reverse(f"polls:manage_{plural}")
+        ctx["back_url"] = ctx["list_url"]
         return ctx
+    def get_success_url(self):
+        return getattr(self, "success_url", None) or self.request.POST.get("next") or self.request.GET.get("next") or self.get_context_data().get("list_url") or super().get_success_url()
 
 
 class OwnerUpdateView(LoginRequiredMixin, OwnerRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["model_verbose_name"] = self.model._meta.verbose_name
+        model_name = self.model._meta.model_name
+        plural_map = {
+            "category": "categories",
+            "project": "projects",
+            "payee": "payees",
+            "source": "sources",
+            "exchange": "exchanges",
+            "balance": "balances",
+            "transaction": "transactions",
+        }
+        plural = plural_map.get(model_name, model_name + "s")
+        ctx["list_url"] = reverse(f"polls:manage_{plural}")
+        ctx["back_url"] = ctx["list_url"]
         return ctx
+    def get_success_url(self):
+        return getattr(self, "success_url", None) or self.request.POST.get("next") or self.request.GET.get("next") or self.get_context_data().get("list_url") or super().get_success_url()
+
+
+class OwnerDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        model_name = self.model._meta.model_name
+        plural_map = {
+            "category": "categories",
+            "project": "projects",
+            "payee": "payees",
+            "source": "sources",
+            "exchange": "exchanges",
+            "balance": "balances",
+            "transaction": "transactions",
+        }
+        plural = plural_map.get(model_name, model_name + "s")
+        list_url = reverse(f"polls:manage_{plural}")
+        ctx["list_url"] = list_url
+        ctx["back_url"] = list_url
+        ctx["model_verbose_name"] = self.model._meta.verbose_name
+        return ctx
+
+    def get_success_url(self):
+        return self.get_context_data().get("list_url") or super().get_success_url()
 
 
 # Category views
@@ -224,6 +295,12 @@ class CategoryUpdateView(OwnerUpdateView):
     model = Category
     fields = ["name"]
     template_name = "manage/form.html"
+    success_url = reverse_lazy("polls:manage_categories")
+
+
+class CategoryDeleteView(OwnerDeleteView):
+    model = Category
+    template_name = "manage/confirm_delete.html"
     success_url = reverse_lazy("polls:manage_categories")
 
 
@@ -247,6 +324,12 @@ class ProjectUpdateView(OwnerUpdateView):
     success_url = reverse_lazy("polls:manage_projects")
 
 
+class ProjectDeleteView(OwnerDeleteView):
+    model = Project
+    template_name = "manage/confirm_delete.html"
+    success_url = reverse_lazy("polls:manage_projects")
+
+
 # Payee views
 class PayeeListView(OwnerListView):
     model = Payee
@@ -264,6 +347,12 @@ class PayeeUpdateView(OwnerUpdateView):
     model = Payee
     fields = ["name"]
     template_name = "manage/form.html"
+    success_url = reverse_lazy("polls:manage_payees")
+
+
+class PayeeDeleteView(OwnerDeleteView):
+    model = Payee
+    template_name = "manage/confirm_delete.html"
     success_url = reverse_lazy("polls:manage_payees")
 
 
@@ -287,6 +376,12 @@ class SourceUpdateView(OwnerUpdateView):
     success_url = reverse_lazy("polls:manage_sources")
 
 
+class SourceDeleteView(OwnerDeleteView):
+    model = Source
+    template_name = "manage/confirm_delete.html"
+    success_url = reverse_lazy("polls:manage_sources")
+
+
 # Exchange views
 class ExchangeListView(OwnerListView):
     model = Exchange
@@ -304,6 +399,12 @@ class ExchangeUpdateView(OwnerUpdateView):
     model = Exchange
     fields = ["date", "source_currency", "target_currency", "rate"]
     template_name = "manage/form.html"
+    success_url = reverse_lazy("polls:manage_exchanges")
+
+
+class ExchangeDeleteView(OwnerDeleteView):
+    model = Exchange
+    template_name = "manage/confirm_delete.html"
     success_url = reverse_lazy("polls:manage_exchanges")
 
 
@@ -327,6 +428,12 @@ class BalanceUpdateView(OwnerUpdateView):
     success_url = reverse_lazy("polls:manage_balances")
 
 
+class BalanceDeleteView(OwnerDeleteView):
+    model = Balance
+    template_name = "manage/confirm_delete.html"
+    success_url = reverse_lazy("polls:manage_balances")
+
+
 # Transaction views
 class TransactionListView(OwnerListView):
     model = Transaction
@@ -345,6 +452,18 @@ class TransactionUpdateView(OwnerUpdateView):
     fields = ["date", "description", "amount", "currency", "source", "category", "project", "payee", "comments"]
     template_name = "manage/form.html"
     success_url = reverse_lazy("polls:manage_transactions")
+
+
+class TransactionDeleteView(OwnerDeleteView):
+    model = Transaction
+    template_name = "manage/confirm_delete.html"
+    success_url = reverse_lazy("polls:manage_transactions")
+
+    def get_success_url(self):
+        nxt = self.request.GET.get("next") or self.request.POST.get("next")
+        if nxt:
+            return nxt
+        return super().get_success_url()
 
 class IndexView(generic.ListView):
     template_name = "polls/index.html"
@@ -422,11 +541,305 @@ def profile(request):
     projects = Project.objects.filter(user=user).order_by('name').values_list('name', flat=True)
     payees = Payee.objects.filter(user=user).order_by('name').values_list('name', flat=True)
     sources = Source.objects.filter(user=user).order_by('name').values_list('name', flat=True)
+    # Latest transactions (newest first) with pagination (5 per page)
+    tx_qs = Transaction.objects.filter(user=user).order_by('-date', '-id')
+    page_number = request.GET.get('page') or 1
+    paginator = Paginator(tx_qs, 5)
+    tx_page = paginator.get_page(page_number)
+
+    # Monthly expenses by category in USD (current or previous month)
+    today = datetime.date.today()
+    current_year, current_month = today.year, today.month
+    def month_str(y, m):
+        return f"{y:04d}-{m:02d}"
+    def prev_month(y, m):
+        return (y-1, 12) if m == 1 else (y, m-1)
+    def next_month(y, m):
+        return (y+1, 1) if m == 12 else (y, m+1)
+    selected_m = request.GET.get('m')
+    sel_year, sel_month = current_year, current_month
+    if selected_m:
+        try:
+            parts = selected_m.split('-')
+            y = int(parts[0]); m = int(parts[1])
+            if 1 <= m <= 12:
+                sel_year, sel_month = y, m
+        except Exception:
+            sel_year, sel_month = current_year, current_month
+    # Range: [first day of selected month, first day of next month)
+    first_day = datetime.date(sel_year, sel_month, 1)
+    ny, nm = next_month(sel_year, sel_month)
+    next_first = datetime.date(ny, nm, 1)
+    month_qs = Transaction.objects.filter(user=user, date__gte=first_day, date__lt=next_first)
+    totals = {}
+    missing_rates = 0
+    for t in month_qs:
+        # Consider expenses only (positive amounts; quick-add typically uses positive for outflows)
+        if t.amount <= 0:
+            continue
+        usd = t.to_usd()
+        if usd is None:
+            missing_rates += 1
+            continue
+        key = t.category.name if t.category else 'Sin categoría'
+        totals[key] = totals.get(key, Decimal('0')) + usd
+    cat_expenses = [
+        {
+            'name': k,
+            'total_usd': v,
+        }
+        for k, v in totals.items()
+    ]
+    cat_expenses.sort(key=lambda r: r['total_usd'], reverse=True)
+    py, pm = prev_month(sel_year, sel_month)
+    context_month = {
+        'cat_expenses': cat_expenses,
+        'selected_month_str': month_str(sel_year, sel_month),
+        'm_current': month_str(current_year, current_month),
+        'm_prev': month_str(py, pm),
+        'exp_missing_rates': missing_rates,
+    }
     context = {
         'user': user,
         'qa_categories': list(categories),
         'qa_projects': list(projects),
         'qa_payees': list(payees),
         'qa_sources': list(sources),
+        'tx_page': tx_page,
+        'tx_paginator': paginator,
+        **context_month,
     }
     return render(request, 'profile.html', context)
+
+
+# Bulk transaction import views
+@login_required
+def bulk_add_view(request):
+    """Display bulk transaction import interface."""
+    user = request.user
+    
+    from .copy_paste.utils import get_available_banks
+    
+    try:
+        banks = get_available_banks()
+    except Exception as e:
+        messages.error(request, f"Error loading banks: {str(e)}")
+        banks = {}
+    
+    # Get user's sources, categories, and payees
+    user_sources = Source.objects.filter(user=user).values_list("name", flat=True)
+    user_categories = Category.objects.filter(user=user).values_list("name", flat=True)
+    user_payees = Payee.objects.filter(user=user).values_list("name", flat=True)
+    
+    context = {
+        'banks': banks,
+        'user_sources': list(user_sources),
+        'user_categories': list(user_categories),
+        'user_payees': list(user_payees),
+    }
+    
+    return render(request, 'polls/bulk_add.html', context)
+
+
+@login_required
+@require_POST
+def bulk_parse_view(request):
+    """Parse pasted transaction data and return preview."""
+    user = request.user
+    
+    try:
+        raw_text = request.POST.get("raw_text", "").strip()
+        bank = request.POST.get("bank", "").strip()
+        currency = request.POST.get("currency", "").strip() or None
+        
+        if not raw_text:
+            return JsonResponse({
+                "success": False,
+                "errors": ["No data provided"]
+            }, status=400)
+        
+        if not bank:
+            return JsonResponse({
+                "success": False,
+                "errors": ["Bank not selected"]
+            }, status=400)
+        
+        from .copy_paste.parsers import TransactionParser
+        from .copy_paste.validators import TransactionValidator
+        from .copy_paste.utils import load_yaml_config, format_transaction_for_display
+        
+        # Load config and parse
+        config = load_yaml_config()
+        parser = TransactionParser(config)
+        transactions, parse_errors = parser.parse(raw_text, bank, currency)
+        
+        if parse_errors:
+            return JsonResponse({
+                "success": False,
+                "errors": parse_errors
+            }, status=400)
+        
+        # Validate each transaction
+        validated = []
+        validation_errors = []
+        
+        for i, txn in enumerate(transactions):
+            is_valid, errors = TransactionValidator.validate_transaction(txn)
+            
+            if not is_valid:
+                validation_errors.append({
+                    "line": i + 1,
+                    "errors": errors
+                })
+                continue
+            
+            # Check for duplicates in batch
+            if TransactionValidator.check_duplicate_in_batch(txn, validated):
+                validation_errors.append({
+                    "line": i + 1,
+                    "errors": ["Duplicate in batch"]
+                })
+                continue
+            
+            # Check for duplicates in DB and mark the transaction
+            is_duplicate = TransactionValidator.check_duplicate_in_db(txn, user.id, from_django=True)
+            if is_duplicate:
+                txn['is_duplicate'] = True
+            
+            validated.append(txn)
+        
+        # Format for display
+        display_transactions = [format_transaction_for_display(t) for t in validated]
+        
+        return JsonResponse({
+            "success": True,
+            "transactions": display_transactions,
+            "validation_errors": validation_errors,
+            "total_parsed": len(transactions),
+            "total_valid": len(validated),
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "errors": [f"Error: {str(e)}"]
+        }, status=500)
+
+
+@login_required
+@require_POST
+def bulk_confirm_view(request):
+    """Confirm and save selected transactions."""
+    user = request.user
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        transactions = data.get("transactions", [])
+        
+        if not transactions:
+            return JsonResponse({
+                "success": False,
+                "errors": ["No transactions to save"]
+            }, status=400)
+        
+        from .copy_paste.validators import TransactionValidator
+        from decimal import Decimal
+        
+        created_count = 0
+        errors = []
+        
+        # Helper function to get or create related models
+        def get_or_create_model(model, name):
+            if not name:
+                return None
+            obj = model.objects.filter(user=user, name__iexact=name.strip()).first()
+            if obj:
+                return obj
+            return model.objects.create(user=user, name=name.strip())
+        
+        for i, txn_data in enumerate(transactions):
+            try:
+                # Validate
+                txn = {
+                    "date": txn_data.get("date"),
+                    "description": txn_data.get("description"),
+                    "amount": Decimal(str(txn_data.get("amount", 0))),
+                    "currency": txn_data.get("currency"),
+                    "source": txn_data.get("source"),
+                }
+                
+                is_valid, val_errors = TransactionValidator.validate_transaction(txn)
+                if not is_valid:
+                    errors.append({
+                        "index": i,
+                        "errors": val_errors
+                    })
+                    continue
+                
+                # Get or create source
+                source = None
+                if txn["source"]:
+                    # Parse source string (e.g., "itau:7654" -> "7654")
+                    source_name = txn["source"].split(":")[-1] if ":" in txn["source"] else txn["source"]
+                    source, _ = Source.objects.get_or_create(
+                        user=user,
+                        name=source_name
+                    )
+                
+                # Get or create category and payee
+                category_name = txn_data.get("category")
+                payee_name = txn_data.get("payee")
+                
+                category = get_or_create_model(Category, category_name) if category_name else None
+                payee = get_or_create_model(Payee, payee_name) if payee_name else None
+                
+                # Create transaction
+                transaction = Transaction.objects.create(
+                    user=user,
+                    date=txn["date"],
+                    description=txn["description"],
+                    amount=txn["amount"],
+                    currency=txn["currency"],
+                    source=source,
+                    category=category,
+                    payee=payee,
+                )
+                
+                created_count += 1
+            
+            except Exception as e:
+                errors.append({
+                    "index": i,
+                    "errors": [str(e)]
+                })
+        
+        if created_count == 0:
+            return JsonResponse({
+                "success": False,
+                "errors": errors,
+                "message": "No transactions were saved"
+            }, status=400)
+        
+        response_data = {
+            "success": True,
+            "created": created_count,
+            "message": f"{created_count} transaction(s) created successfully"
+        }
+        
+        if errors:
+            response_data["errors"] = errors
+        
+        return JsonResponse(response_data)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "success": False,
+            "errors": ["Invalid JSON"]
+        }, status=400)
+    
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "errors": [f"Error: {str(e)}"]
+        }, status=500)

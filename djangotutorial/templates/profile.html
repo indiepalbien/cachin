@@ -3,20 +3,45 @@
 {% block title %}Mi perfil — App-Finanzas{% endblock %}
 
 {% block content %}
-  <h1>Hola, {{ user.username }}</h1>
-  <p>Esta es tu página de usuario.</p>
 
   <!-- Quick-add compact form -->
-  <section id="quick-add" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--muted);">
+  <section id="quick-add" style="margin:1rem 0;padding:0.75rem;border:1px solid var(--accent);background:var(--panel);">
+    <style>
+      /* Compact grid for quick-add, keeps fields aligned and wraps neatly on mobile */
+      #quick-add .qa-grid{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+        gap:0.6rem;
+        align-items:center;
+      }
+      #quick-add input{width:100%;box-sizing:border-box;padding:0.5rem 0.65rem}
+      #quick-add input[type=number]{appearance:textfield;-moz-appearance:textfield}
+      #quick-add input[type=number]::-webkit-outer-spin-button,
+      #quick-add input[type=number]::-webkit-inner-spin-button{margin:0;-webkit-appearance:none}
+      #quick-add .qa-grid button{grid-column:1/-1}
+      @media(min-width:960px){
+        #quick-add .qa-grid{grid-template-columns:repeat(4,1fr)}
+      }
+    </style>
     <form id="quick-add-form" action="{% url 'polls:quick_transaction' %}" method="post">
       {% csrf_token %}
-      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
-        <input name="description" id="qa-description" placeholder="Descripción*" required style="flex:2;min-width:160px">
-        <input name="amount" id="qa-amount" type="number" step="0.01" placeholder="Importe*" required style="width:120px">
-        <input name="date" id="qa-date" type="date" required style="width:150px">
-        <input name="currency" id="qa-currency" placeholder="EUR* / USD*" required style="width:90px;text-transform:uppercase">
+      <div class="qa-grid">
+        <input name="description" id="qa-description" class="qa-description" placeholder="Descripción*" required>
+        <input name="amount" id="qa-amount" class="qa-amount" type="number" step="0.01" placeholder="Ej: 123.45" required>
+        <input name="date" id="qa-date" type="date" required>
+        <input name="currency" id="qa-currency" class="qa-currency" list="qa-currencies" placeholder="EUR* / USD*" maxlength="3" required>
+        <datalist id="qa-currencies">
+          <option value="USD">
+          <option value="EUR">
+          <option value="UYU">
+          <option value="ARS">
+          <option value="BRL">
+          <option value="GBP">
+          <option value="CLP">
+          <option value="MXN">
+        </datalist>
         <!-- Category: text input with server-rendered suggestions -->
-        <input name="category" id="qa-category" list="qa-categorys" placeholder="Categoría..." style="width:140px">
+        <input name="category" id="qa-category" list="qa-categorys" placeholder="Categoría...">
         <datalist id="qa-categorys">
           {% for name in qa_categories %}
             <option value="{{ name }}">
@@ -24,7 +49,7 @@
         </datalist>
 
         <!-- Project: text input with server-rendered suggestions -->
-        <input name="project" id="qa-project" list="qa-projects" placeholder="Proyecto..." style="width:140px">
+        <input name="project" id="qa-project" list="qa-projects" placeholder="Proyecto...">
         <datalist id="qa-projects">
           {% for name in qa_projects %}
             <option value="{{ name }}">
@@ -32,7 +57,7 @@
         </datalist>
 
         <!-- Payee: text input with server-rendered suggestions -->
-        <input name="payee" id="qa-payee" list="qa-payees" placeholder="Beneficiario..." style="width:160px">
+        <input name="payee" id="qa-payee" list="qa-payees" placeholder="Beneficiario...">
         <datalist id="qa-payees">
           {% for name in qa_payees %}
             <option value="{{ name }}">
@@ -40,7 +65,7 @@
         </datalist>
 
         <!-- Source: text input with server-rendered suggestions -->
-        <input name="source" id="qa-source" list="qa-sources" placeholder="Origen..." style="width:140px">
+        <input name="source" id="qa-source" list="qa-sources" placeholder="Origen...">
         <datalist id="qa-sources">
           {% for name in qa_sources %}
             <option value="{{ name }}">
@@ -50,9 +75,100 @@
       </div>
     </form>
     <div id="qa-msg" aria-live="polite" style="margin-top:0.5rem;opacity:0;transition:opacity .2s">&nbsp;</div>
+    
+    <!-- Bulk import link -->
+    <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px dashed var(--accent);">
+      <a href="{% url 'polls:bulk_add' %}" 
+         style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;background:var(--accent);color:var(--bg);text-decoration:none;border-radius:4px;font-weight:500;transition:opacity .2s"
+         onmouseover="this.style.opacity='0.8'" 
+         onmouseout="this.style.opacity='1'">
+        📋 Importar múltiples transacciones
+      </a>
+      <span style="margin-left:0.5rem;color:var(--muted);font-size:0.9rem">
+        Copiar y pegar desde tu banco
+      </span>
+    </div>
   </section>
 
-  <p><a href="{% url 'polls:manage_dashboard' %}">Gestionar mis datos</a></p>
+
+  <!-- Últimas transacciones (paginadas, 5 por página) -->
+  <section id="recent-transactions" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
+    <h2 style="margin:0 0 .5rem 0">Últimas transacciones</h2>
+    {% if tx_page and tx_page.object_list %}
+      <ul style="list-style:none;padding:0;margin:0">
+        {% for t in tx_page %}
+          <li style="display:flex;gap:.5rem;align-items:center;border-bottom:1px dashed var(--accent);padding:.4rem 0">
+            <a href="{% url 'polls:manage_transaction_edit' t.pk %}?next={{ request.get_full_path|urlencode }}"
+              title="Editar"
+              aria-label="Editar transacción"
+              style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:var(--muted);text-decoration:none;font-size:14px;line-height:1">🔧</a>
+            <span style="flex:2;min-width:160px">{{ t.description }}</span>
+            <span style="width:120px;text-align:right">{{ t.amount }}</span>
+            <span style="width:70px;text-transform:uppercase;text-align:center">{{ t.currency }}</span>
+            <span style="width:130px;text-align:right">{{ t.date }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.5rem">
+        <div>
+          {% if tx_page.has_previous %}
+            <a href="?page={{ tx_page.previous_page_number }}">« Anterior</a>
+          {% endif %}
+        </div>
+        <div>
+          {% if tx_page.has_next %}
+            <a href="?page={{ tx_page.next_page_number }}">Siguiente »</a>
+          {% endif %}
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:.25rem">
+        {% for num in tx_page.paginator.page_range %}
+          {% if num == tx_page.number %}
+            <span style="font-weight:700;border-bottom:2px solid var(--accent);padding:0 .25rem">{{ num }}</span>
+          {% else %}
+            <a href="?page={{ num }}" style="padding:0 .25rem">{{ num }}</a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="margin:0">Aún no hay transacciones.</p>
+    {% endif %}
+  </section>
+
+  <!-- Gastos por categoría (USD) con selector de mes -->
+  <section id="category-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
+    <h2 style="margin:0 0 .5rem 0">Gastos por categoría</h2>
+    <div style="text-align:center;margin:.25rem 0 .5rem 0">
+      <a href="?m={{ m_prev }}">« Mes anterior</a>
+      <span style="margin:0 .75rem">Mes {{ selected_month_str }}</span>
+      {% if m_current != selected_month_str %}
+        <a href="?m={{ m_current }}">Mes actual »</a>
+      {% endif %}
+    </div>
+    {% if exp_missing_rates and exp_missing_rates > 0 %}
+      <div class="message" style="background:#fff4f4">Faltan {{ exp_missing_rates }} tasas de cambio para convertir algunas transacciones.</div>
+    {% endif %}
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr>
+          <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Categoría</th>
+          <th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">Gasto (USD)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in cat_expenses %}
+          <tr>
+            <td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">{{ row.name }}</td>
+            <td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">$ {{ row.total_usd }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="2" style="padding:.3rem 0">Sin gastos en este mes.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
 
   <script>
   (function(){
@@ -180,7 +296,12 @@
           parts.push(name.toUpperCase()+": options:"+opts.length+" value:"+(inp.value||''))
           parts.push(JSON.stringify(opts))
         })
-        qs('#qa-debug').textContent = parts.join('\n')
+        const debugEl = qs('#qa-debug')
+        if(!debugEl){
+          // No debug container present; skip safely
+          return
+        }
+        debugEl.textContent = parts.join('\n')
       }catch(e){ console.log('qa-debug err', e) }
     }
 
@@ -203,13 +324,21 @@
         }
 
         const fd = new FormData(form)
-      // client-side currency normalization
-      const cur = (fd.get('currency')||'').toUpperCase().trim()
-      if(!/^[A-Z]{3}$/.test(cur)){
-        showMsg('Moneda inválida (3 letras).', true)
-        return
-      }
-      fd.set('currency', cur)
+        // client-side amount validation/normalization
+        const amtRaw = (fd.get('amount')||'').toString().replace(',','.')
+        const amtNum = Number(amtRaw)
+        if(!Number.isFinite(amtNum)){
+          showMsg('Importe inválido. Ej: 123.45', true)
+          return
+        }
+        fd.set('amount', amtNum.toFixed(2))
+        // client-side currency normalization
+        const cur = (fd.get('currency')||'').toUpperCase().trim()
+        if(!/^[A-Z]{3}$/.test(cur)){
+          showMsg('Moneda inválida (3 letras).', true)
+          return
+        }
+        fd.set('currency', cur)
 
       try{
         const res = await fetch(form.action, {method:'POST', body:fd, credentials: 'same-origin', headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}})
@@ -222,11 +351,9 @@
           return
         }
         if(res.ok && json.success){
-          form.reset()
-          // restore date to today
-          dateInput.value = new Date().toISOString().slice(0,10)
+          // Show success briefly, then refresh so new data appears
           showMsg(json.message || 'Añadido', false)
-          // Note: options are server-rendered; reload page to see newly created items
+          setTimeout(()=>{ window.location.reload() }, 700)
         }else{
           const errs = (json && (json.errors || (json.message && [json.message]))) || ['Error']
           showMsg(errs.join(' / '), true)
@@ -247,7 +374,7 @@
     function showMsg(text, isError){
       msg.textContent = text
       msg.style.opacity = '1'
-      msg.style.color = isError ? 'var(--danger)' : 'var(--accent)'
+      msg.style.color = isError ? '#dc2626' : 'var(--accent)'
       setTimeout(()=>{ msg.style.opacity = '0' }, 1000)
     }
   })()

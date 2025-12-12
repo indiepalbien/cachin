@@ -3,10 +3,13 @@
 {% block title %}Form — Manage{% endblock %}
 
 {% block content %}
-  <p><a href="javascript:history.back()">← Volver</a></p>
+  <p><a href="{{ back_url|default:'javascript:history.back()' }}">← Volver</a></p>
   <h1>Crear / Editar {{ model_verbose_name }}</h1>
   <form method="post">
     {% csrf_token %}
+    {% if back_url %}
+      <input type="hidden" name="next" value="{{ back_url }}">
+    {% endif %}
     {{ form.as_p }}
     <button type="submit">Guardar</button>
   </form>

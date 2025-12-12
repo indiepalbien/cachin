@@ -3,7 +3,7 @@
 {% block title %}Manage — App-Finanzas{% endblock %}
 
 {% block content %}
-  <p><a href="javascript:history.back()">← Volver</a></p>
+  <p><a href="{% url 'profile' %}">← Volver</a></p>
   <h1>Gestionar datos</h1>
   <ul>
     {% for name, url_name in resources %}

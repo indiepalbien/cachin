@@ -124,6 +124,24 @@ class Transaction(models.Model):
         ).order_by('-date')
         if rate_qs.exists():
             rate = rate_qs.first().rate
-            return (self.amount * rate).quantize(Decimal('0.01'))
+            try:
+                return (self.amount * rate).quantize(Decimal('0.01'))
+            except Exception:
+                return None
+
+        # Try inverse rate: USD -> source_currency, then divide
+        inv_qs = Exchange.objects.filter(
+            user=self.user,
+            source_currency__iexact='USD',
+            target_currency__iexact=self.currency,
+            date__lte=self.date,
+        ).order_by('-date')
+        if inv_qs.exists():
+            inv_rate = inv_qs.first().rate
+            try:
+                if inv_rate and inv_rate != 0:
+                    return (self.amount / inv_rate).quantize(Decimal('0.01'))
+            except Exception:
+                return None
 
         return None

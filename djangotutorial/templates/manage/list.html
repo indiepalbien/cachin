@@ -3,12 +3,12 @@
 {% block title %}List — Manage{% endblock %}
 
 {% block content %}
-  <p><a href="javascript:history.back()">← Volver</a></p>
+  <p><a href="{{ back_url|default:'javascript:history.back()' }}">← Volver</a></p>
   <h1>{{ model_verbose_name_plural|capfirst }}</h1>
-  <p><a href="{% url create_url_name %}">Añadir nuevo</a></p>
+  <p><a href="{% url create_url_name %}?next={{ request.get_full_path|urlencode }}">Añadir nuevo</a></p>
   <ul>
     {% for obj in object_list %}
-      <li>{{ obj }} — <a href="{% url edit_url_name obj.pk %}">Editar</a></li>
+      <li>{{ obj }} — <a href="{% url edit_url_name obj.pk %}?next={{ request.get_full_path|urlencode }}">Editar</a> · <a href="{% url delete_url_name obj.pk %}?next={{ request.get_full_path|urlencode }}">Borrar</a></li>
     {% empty %}
       <li>No hay elementos.</li>
     {% endfor %}

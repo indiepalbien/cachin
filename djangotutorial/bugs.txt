@@ -1,0 +1,6 @@
+
+
+4. Necesitamos agregar un campo "external id" que prevenga agregar transacciones si ya existe una con el mismo external_id. Cuando agregamos una trasaccion desde la página le vamos asignar un random external id que empieze con webapp:<randomid ~20 length>
+
+5. tenemos que borrar todo el codigo que se refiere a polls y el ejemplo original que estamos usando y renomabar el proyecto a "transactions"
+

@@ -1,0 +1,113 @@
+banks:
+  itau_debito:
+    name: "ITAU Débito"
+    description: "ITAU Debit account - tab-separated format"
+    delimiter: "\t"
+    requires_currency: true
+    source_prefix: "itau:"
+    columns:
+      - name: "fecha"
+        index: 0
+        type: "date"
+        format: "%d-%m-%y"
+      - name: "description"
+        index: 1
+        type: "string"
+      - name: "debito"
+        index: 2
+        type: "amount"
+      - name: "credito"
+        index: 3
+        type: "amount"
+      - name: "saldo"
+        index: 4
+        type: "ignore"
+    amount_calculation: "debito - credito"
+
+  itau_credito:
+    name: "ITAU Crédito"
+    description: "ITAU Credit card - tab-separated format"
+    delimiter: "\t"
+    requires_currency: false
+    source_prefix: "itau:"
+    columns:
+      - name: "tarjeta"
+        index: 0
+        type: "string"
+      - name: "description"
+        index: 1
+        type: "string"
+      - name: "tipo"
+        index: 2
+        type: "ignore"
+      - name: "fecha"
+        index: 3
+        type: "date"
+        format: "%d/%m/%y"
+      - name: "currency"
+        index: 4
+        type: "currency"
+      - name: "amount"
+        index: 5
+        type: "amount"
+    amount_calculation: "direct"
+
+  scotia_credito:
+    name: "Scotia Crédito"
+    description: "Scotia Credit card - tab-separated, dual currency columns"
+    delimiter: "\t"
+    requires_currency: false
+    source_prefix: "scotia:"
+    columns:
+      - name: "fecha"
+        index: 0
+        type: "date"
+        format: "%d/%m/%Y"
+      - name: "description"
+        index: 1
+        type: "string"
+      - name: "monto_uyu"
+        index: 2
+        type: "amount"
+      - name: "monto_usd"
+        index: 3
+        type: "amount"
+    amount_currency_pairs:
+      - amount_field: "monto_uyu"
+        currency: "UYU"
+      - amount_field: "monto_usd"
+        currency: "USD"
+    amount_calculation: "use_non_zero"
+
+  bbva_credito:
+    name: "BBVA Crédito"
+    description: "BBVA Credit card - tab-separated, dual currency columns"
+    delimiter: "\t"
+    requires_currency: false
+    source_prefix: "bbva:"
+    columns:
+      - name: "fecha"
+        index: 0
+        type: "date"
+        format: "%d/%m/%Y"
+      - name: "tarjeta"
+        index: 1
+        type: "string"
+      - name: "description"
+        index: 2
+        type: "string"
+      - name: "monto_uyu"
+        index: 3
+        type: "amount"
+      - name: "monto_usd"
+        index: 4
+        type: "amount"
+      - name: "mes"
+        index: 5
+        type: "ignore"
+    amount_currency_pairs:
+      - amount_field: "monto_uyu"
+        currency: "UYU"
+      - amount_field: "monto_usd"
+        currency: "USD"
+    amount_calculation: "use_non_zero"
