@@ -28,6 +28,12 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
+# CSRF trusted origins for Railway deployment
+CSRF_TRUSTED_ORIGINS = [
+    'https://cachinapp.com',
+    'https://*.railway.app',
+    'https://*.up.railway.app',
+]
 
 # Application definition
 
