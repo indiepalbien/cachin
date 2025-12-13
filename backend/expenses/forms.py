@@ -1,6 +1,37 @@
 """Forms for expenses app."""
 
 from django import forms
+from .models import Exchange
+
+
+class ExchangeForm(forms.ModelForm):
+    """Form for creating/editing exchange rates."""
+    
+    class Meta:
+        model = Exchange
+        fields = ['date', 'source_currency', 'target_currency', 'rate']
+        widgets = {
+            'date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'source_currency': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'USD'
+            }),
+            'target_currency': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'UYU'
+            }),
+            'rate': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.00000001',
+                'placeholder': '40.00'
+            }),
+        }
+        help_texts = {
+            'rate': 'Ejemplo: Si 1 USD = 40 UYU, ingresa "USD" en moneda origen, "UYU" en moneda destino, y "40" en tasa.',
+        }
 
 
 class BulkTransactionForm(forms.Form):

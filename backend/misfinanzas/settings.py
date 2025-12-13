@@ -24,7 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-+^p_y(@#%!(*c-n0=z&e2hl+2pu3f23gr4s01i)7bn70=da-(*')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+# In production (when USE_POSTGRES=True), DEBUG defaults to False
+# In local development (SQLite), DEBUG defaults to True
+USE_POSTGRES = os.environ.get('USE_POSTGRES', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', str(not USE_POSTGRES)) == 'True'
 
 ALLOWED_HOSTS = ['*']
 
@@ -83,9 +86,6 @@ WSGI_APPLICATION = 'misfinanzas.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 # Use PostgreSQL in production (Railway) and SQLite in local development
-# Railway automatically sets RAILWAY_ENVIRONMENT or we can check for PGHOST
-USE_POSTGRES = os.environ.get('USE_POSTGRES', 'False') == 'True'
-
 if USE_POSTGRES:
     # PostgreSQL configuration for Railway
     DATABASES = {

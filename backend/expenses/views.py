@@ -13,6 +13,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction
+from . import forms
 from django.views.decorators.http import require_POST, require_GET
 from django.utils import timezone as dj_timezone
 from decimal import Decimal, InvalidOperation
@@ -389,14 +390,14 @@ class ExchangeListView(OwnerListView):
 
 class ExchangeCreateView(OwnerCreateView):
     model = Exchange
-    fields = ["date", "source_currency", "target_currency", "rate"]
+    form_class = forms.ExchangeForm
     template_name = "manage/form.html"
     success_url = reverse_lazy("expenses:manage_exchanges")
 
 
 class ExchangeUpdateView(OwnerUpdateView):
     model = Exchange
-    fields = ["date", "source_currency", "target_currency", "rate"]
+    form_class = forms.ExchangeForm
     template_name = "manage/form.html"
     success_url = reverse_lazy("expenses:manage_exchanges")
 
