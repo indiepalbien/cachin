@@ -11,10 +11,17 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+from dotenv import load_dotenv
 from pathlib import Path
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load .env for local development (non-production)
+env_path = BASE_DIR.parent / '.env'
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
 
 
 # Quick-start development settings - unsuitable for production
@@ -156,3 +163,22 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Email fetch settings (IMAP)
+EMAIL_FETCH_IMAP_HOST = os.environ.get('EMAIL_FETCH_IMAP_HOST', 'imap.cachinapp.com')
+EMAIL_FETCH_IMAP_PORT = int(os.environ.get('EMAIL_FETCH_IMAP_PORT', '993'))
+EMAIL_FETCH_IMAP_SSL = os.environ.get('EMAIL_FETCH_IMAP_SSL', 'True') == 'True'
+EMAIL_FETCH_USER = os.environ.get('EMAIL_FETCH_USER')  # optional shared mailbox user
+EMAIL_FETCH_PASS = os.environ.get('EMAIL_FETCH_PASS')  # optional shared mailbox password
+
+# Celery / Celery Beat
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
+CELERY_TIMEZONE = os.environ.get('CELERY_TIMEZONE', TIME_ZONE)
+CELERY_TASK_ALWAYS_EAGER = os.environ.get('CELERY_TASK_ALWAYS_EAGER', 'False') == 'True'
+CELERY_BEAT_SCHEDULE = {
+    'fetch-emails-daily': {
+        'task': 'expenses.tasks.fetch_emails_task',
+        'schedule': crontab(hour=4, minute=0),  # 04:00 UTC daily
+    },
+}

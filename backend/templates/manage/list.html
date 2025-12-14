@@ -5,10 +5,18 @@
 {% block content %}
   <p><a href="{{ back_url|default:'javascript:history.back()' }}">← Volver</a></p>
   <h1>{{ model_verbose_name_plural|capfirst }}</h1>
+  {% if header_note %}
+  <p><em>{{ header_note }}</em></p>
+  {% endif %}
+  {% if create_url_name %}
   <p><a href="{% url create_url_name %}?next={{ request.get_full_path|urlencode }}">Añadir nuevo</a></p>
+  {% endif %}
   <ul>
     {% for obj in object_list %}
-      <li>{{ obj }} — <a href="{% url edit_url_name obj.pk %}?next={{ request.get_full_path|urlencode }}">Editar</a> · <a href="{% url delete_url_name obj.pk %}?next={{ request.get_full_path|urlencode }}">Borrar</a></li>
+      <li>{{ obj }}
+        {% if edit_url_name %} — <a href="{% url edit_url_name obj.pk %}?next={{ request.get_full_path|urlencode }}">Editar</a>{% endif %}
+        {% if delete_url_name %} · <a href="{% url delete_url_name obj.pk %}?next={{ request.get_full_path|urlencode }}">Borrar</a>{% endif %}
+      </li>
     {% empty %}
       <li>No hay elementos.</li>
     {% endfor %}

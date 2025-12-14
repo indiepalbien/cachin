@@ -52,6 +52,56 @@ class Exchange(models.Model):
         return f"{self.date} {self.source_currency}->{self.target_currency} @ {self.rate}"
 
 
+ 
+# Email processing models
+class UserEmailConfig(models.Model):
+        """Per-user email automation config.
+
+        Stores the unique alias assigned to each user, e.g.
+        <random>.automation@cachinapp.com, and optional mailbox credentials
+        if needed per-user.
+        """
+        user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+        alias_localpart = models.CharField(max_length=64, unique=True)
+        domain = models.CharField(max_length=255, default="cachinapp.com")
+        full_address = models.EmailField(unique=True)
+        # Optional per-user mailbox credentials (can be blank if using a shared ingest mailbox)
+        mailbox_username = models.CharField(max_length=255, blank=True)
+        mailbox_password = models.CharField(max_length=255, blank=True)
+        active = models.BooleanField(default=True)
+        created_at = models.DateTimeField(auto_now_add=True)
+
+        class Meta:
+            verbose_name = "User Email Config"
+            verbose_name_plural = "User Email Configs"
+
+        def save(self, *args, **kwargs):
+            # Address format: automation.<random>@domain
+            self.full_address = f"automation.{self.alias_localpart}@{self.domain}".lower()
+            super().save(*args, **kwargs)
+
+        def __str__(self):
+            return f"{self.user} -> {self.full_address}"
+
+
+class UserEmailMessage(models.Model):
+        """Stored email messages associated to a user."""
+        user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+        message_id = models.CharField(max_length=255, db_index=True)
+        subject = models.CharField(max_length=500, blank=True)
+        from_address = models.CharField(max_length=500, blank=True)
+        to_addresses = models.TextField(blank=True)  # comma-separated
+        date = models.DateTimeField(null=True, blank=True)
+        raw_eml = models.BinaryField()  # store the raw RFC822 bytes
+        downloaded_at = models.DateTimeField(auto_now_add=True)
+
+        class Meta:
+            unique_together = ("user", "message_id")
+            ordering = ["-downloaded_at"]
+
+        def __str__(self):
+            return f"{self.user} - {self.subject or self.message_id}"
+
 class Balance(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     source = models.ForeignKey(Source, on_delete=models.CASCADE)

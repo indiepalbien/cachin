@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
-from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction
+from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig
 from . import forms
 from django.views.decorators.http import require_POST, require_GET
 from django.utils import timezone as dj_timezone
@@ -166,6 +166,7 @@ def manage_dashboard(request):
         ("Exchanges", "expenses:manage_exchanges"),
         ("Balances", "expenses:manage_balances"),
         ("Transactions", "expenses:manage_transactions"),
+        ("Emails", "expenses:manage_emails"),
     ]
     return render(request, "manage/dashboard.html", {"resources": resources})
 
@@ -406,6 +407,30 @@ class ExchangeDeleteView(OwnerDeleteView):
     model = Exchange
     template_name = "manage/confirm_delete.html"
     success_url = reverse_lazy("expenses:manage_exchanges")
+
+
+class EmailMessageListView(LoginRequiredMixin, ListView):
+    model = UserEmailMessage
+    template_name = "manage/list.html"
+
+    def get_queryset(self):
+        return UserEmailMessage.objects.filter(user=self.request.user).order_by('-downloaded_at')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['model_verbose_name'] = 'Emails'
+        ctx['model_verbose_name_plural'] = 'Emails'
+        # No create/edit/delete routes for email messages list (read-only)
+        ctx['create_url_name'] = None
+        ctx['edit_url_name'] = None
+        ctx['delete_url_name'] = None
+        # Show user's personalized email address (alias) if available
+        cfg = UserEmailConfig.objects.filter(user=self.request.user, active=True).first()
+        if cfg and cfg.full_address:
+            ctx['header_note'] = f"Tu dirección de correo: {cfg.full_address}"
+        else:
+            ctx['header_note'] = "No tienes una dirección de correo configurada aún."
+        return ctx
 
 
 # Balance views
