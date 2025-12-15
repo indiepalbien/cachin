@@ -53,6 +53,36 @@ Now you can run the app and commands without exporting variables manually.
 - If matched, stores the raw EML and metadata in `UserEmailMessage`.
 - Marks stored messages as `\\Seen`.
 
+### Comandos útiles
+
+Local (ejecución puntual)
+```
+# Fetch + parse + crear transacciones (tarea completa)
+uv run python backend/manage.py shell -c "from expenses.tasks import fetch_emails_task; fetch_emails_task.delay()"
+
+# Solo fetch IMAP (sin parsear a transacciones)
+uv run python backend/manage.py fetch_emails
+
+# Solo ingerir mensajes ya almacenados a transacciones/pending
+uv run python backend/manage.py ingest_emails
+
+# Limpiar mensajes y pendientes (para reintentar desde cero)
+uv run python backend/manage.py clear_useremails
+
+# Descargar un EML por id a stdout
+uv run python backend/manage.py download_eml <id>
+```
+
+Local (Celery worker/beat, con Redis)
+```
+uv run celery -A misfinanzas worker -l info
+uv run celery -A misfinanzas beat -l info   # schedule cada 5 minutos
+```
+
+Railway
+- Asegura 3 procesos/servicios: web, worker (`celery -A misfinanzas worker -l info`), beat (`celery -A misfinanzas beat -l info`).
+- Broker/backend: `CELERY_BROKER_URL` y `CELERY_RESULT_BACKEND` apuntando a Redis (`REDIS_URL`).
+
 ### Future work
 
 - Filter which emails to ingest.

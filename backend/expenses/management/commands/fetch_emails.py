@@ -1,10 +1,12 @@
 import email
 import imaplib
 from email.header import decode_header, make_header
+from email.utils import parsedate_to_datetime
 from typing import Optional
 
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
+from django.utils import timezone
 
 from expenses.models import UserEmailConfig, UserEmailMessage
 
@@ -76,6 +78,14 @@ class Command(BaseCommand):
             cc = msg.get_all('Cc', []) or []
             recipients = ','.join(tos + cc)
             date_header = msg.get('Date')
+            parsed_date = None
+            if date_header:
+                try:
+                    parsed_date = parsedate_to_datetime(date_header)
+                    if parsed_date and parsed_date.tzinfo is None:
+                        parsed_date = timezone.make_aware(parsed_date, timezone=timezone.utc)
+                except Exception:
+                    parsed_date = None
 
             # Try to match any recipient to a known alias
             matched_user_id = None
@@ -96,6 +106,11 @@ class Command(BaseCommand):
             # Parse message-id and date
             message_id = (msg.get('Message-Id') or msg.get('Message-ID') or '').strip()
 
+            # Skip if already stored for this user/message_id
+            if UserEmailMessage.objects.filter(user_id=matched_user_id, message_id=message_id).exists():
+                client.store(msg_id, '+FLAGS', '\\Seen')
+                continue
+
             try:
                 UserEmailMessage.objects.create(
                     user_id=matched_user_id,
@@ -103,6 +118,7 @@ class Command(BaseCommand):
                     subject=subject,
                     from_address=from_addr,
                     to_addresses=recipients,
+                    date=parsed_date,
                     raw_eml=raw,
                 )
                 self.stdout.write(self.style.SUCCESS(f"Stored email for user {matched_user_id}: {subject}"))

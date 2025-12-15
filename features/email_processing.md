@@ -107,3 +107,47 @@ Estado pendiente actualizado
 - Descargar EML por demanda: endpoint para bajar el archivo EML almacenado.
 - Parser de mails → transacciones.
 - UI de administración: test de conexión IMAP y reintentos.
+
+Parser de Visa con librería (mail-parser)
+- Dependencia: `mail-parser` agregada a requirements/pyproject.
+- Módulo: `backend/expenses/email_parsers/visa.py` usa `mailparser.parse_from_bytes` para extraer campos:
+	- description ← Comercio
+	- source ← Tarjeta con prefijo `visa:` (ej. visa:3048)
+	- currency ← Moneda
+	- amount ← Monto (Decimal)
+	- external_id ← message-id (fallback: hash simple de contenido)
+- Archivo de ejemplo: `features/ejemplo.eml`
+- Para probar en shell local:
+	```bash
+	uv run python manage.py shell -c "from expenses.email_parsers.visa import parse_visa_alert; import pathlib; raw=pathlib.Path('features/ejemplo.eml').read_bytes(); print(parse_visa_alert(raw))"
+	```
+
+Ingesta automática y gating del remitente
+- Procesa solo `UserEmailMessage` sin `processed_at`.
+- Acepta Visa si el remitente es `DoNotReplyAlertadeComprasVisa@visa.com` en envelope From, en los From parseados del EML o si aparece en el cuerpo (para reenviados).
+- Si no matchea, marca `processing_error="skipped_non_visa_sender"` y no intenta parsear.
+- Logging: la ingesta registra envelope_from, froms parseados, saltos por remitente/amount/currency, creación de transacción o duplicados, y excepciones.
+
+
+======================================= Hoy ========================
+
+Acabo de crear un mail `ejmplo.md` que contiene uno de los mails que vamos a recibir y procesar.
+
+En este caso se trata de un email de visa.
+
+Tenemos que hacer parsear el contenido y generar una transacción con las siguientes características
+
+
+comercio = description
+tarjeta = source pero agreguemos "visa:" antes entonces 1234 es "visa:1234"
+autorización -> ignorar pero tiene que ser un nuevo, si es "pending", ignorar
+referencia -> ignorar
+moneda = currency 
+monto = amount
+message-id -> external id
+
+
+External id es una clave unica de cada transaccion que evita que agregemos transacciones duplicadas. No es la "unique id" pero no puede haber duplicadas. Si no tenemos esto, agreguemoslo.
+
+Una segunda cosa: Si una transacción estuvise duplicada, deberímaos mostrarsela al usuario como "pendiente" en lugar de incluirla de entrada o rechazarla de entrada.
+

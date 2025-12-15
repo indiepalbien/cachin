@@ -1,0 +1,86 @@
+Return-Path: <diego@kiedanski.com>
+Delivered-To: admin@cachinapp.com
+Authentication-Results: purelymail.com; auth=pass
+DKIM-Signature: a=rsa-sha256; b=BLaYgv7bLCURp7R/qSs2zYfOIFxCu5zFaDQrIf19LQTf1AwHErZdHG61QfDkqs7On+u9iA+VbF9YAXh/xeKHAkjCxip0Nsk68k4Ex9S8aD/63Xjy7HPRh8MJmUtycnX3XpSNLHJio0splM+vpL5p8e2qeFJz6WLhNxgANVZf8JJhtRvN0hue1wOY5JQhY7ZSYdZW747NtYAWTXTLQClZi4NZW4ywZsiFXUAo7GxbhzZtoUSXMXTmi3jUZi6LA+M0mwd5Ojgi3merxZAdR55vW+nY/TzExYMJjXuv8vrntF5LBgbDmPe4+mi+xA3UOOm2pWeiMO9au/e1UuDgo0TF6Q==; s=purelymail1; d=kiedanski.com; v=1; bh=2THP/3lLFWu8iXS/h7vk7m5cjODcvOChR368mP/fm7g=; h=Received:From:Date:Subject:To;
+DKIM-Signature: a=rsa-sha256; b=KO/o4Rg7dJaJqIeb8Y715zA7g2uB0aizW0dl8Gc0O03DllkmjU/g8yGWGCEDKMy0wxWnjt0epUvqPoR358a1pnj23lCx6RWUJuT9d3SjoS6FAGUOMVWBTMCOwMEAGcRPKFzXHHxuz/RbkX7tp3tW78QtANKM4tLkramaOEODm5jvMdZCU6LL5+EVLReg5Yo7w6GbbErW9q1otoQlFzcDzlZgh16fOHY/uViinbNd7/C1ZOuLWOc83NIw8k4rLsJog+UbXfTBlRlpW2IDM3xH7BtOaVW8McyEY7/vufyDrinsY1oM0TeSl5IUtLuXU+IqD4UFb7INkBk6sO0hrouclg==; s=purelymail1; d=purelymail.com; v=1; bh=2THP/3lLFWu8iXS/h7vk7m5cjODcvOChR368mP/fm7g=; h=Received:From:Date:Subject:To;
+X-Pm-Original-To: admin@cachinapp.com
+Received: by smtp.purelymail.com (Purelymail SMTP) with ESMTPSA id -856798044
+          for <admin@cachinapp.com>
+          (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384);
+          Mon, 15 Dec 2025 11:29:19 +0000 (UTC)
+Content-Type: multipart/alternative; boundary=Apple-Mail-1AF8713B-9119-4777-918A-48664DE39172
+Content-Transfer-Encoding: 7bit
+From: Diego <diego@kiedanski.com>
+Mime-Version: 1.0 (1.0)
+Date: Mon, 15 Dec 2025 08:28:48 -0300
+Subject: Fwd: Alerta de Compras Visa
+Message-Id: <C839F782-995E-4D1A-BBC6-5C532200D15F@kiedanski.com>
+References: <96b900$d0fnop@cportal1.visa.com>
+To: admin@cachinapp.com
+X-Mailer: iPhone Mail (23B85)
+
+
+--Apple-Mail-1AF8713B-9119-4777-918A-48664DE39172
+Content-Type: text/html;
+	charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<html class=3D"apple-mail-supports-explicit-dark-mode"><head><meta http-equi=
+v=3D"content-type" content=3D"text/html; charset=3Dutf-8"></head><body dir=3D=
+"auto"><div dir=3D"ltr"></div><div dir=3D"ltr"><br><br><br>Begin forwarded m=
+essage:<br><br></div><blockquote type=3D"cite"><div dir=3D"ltr"><b>From:</b>=
+ Alerta de Compras Visa &lt;DoNotReplyAlertadeComprasVisa@visa.com&gt;<br><b=
+>Date:</b> 13 December 2025 at 2:17:46=E2=80=AFPM GMT-3<br><b>To:</b> diego@=
+kiedanski.com<br><b>Subject:</b> <b>Alerta de Compras Visa</b><br><br></div>=
+</blockquote><blockquote type=3D"cite"><div dir=3D"ltr">=EF=BB=BF
+
+   =20
+   =20
+   =20
+   =20
+
+
+
+
+
+   =20
+    <img src=3D"https://imgctl.visa.com/ImageCatalog/KxlHiN01RUuWCixS3f15bw"=
+ alt=3D"" data-unique-identifier=3D"">
+
+    <hr>
+
+        <p>Su tarjeta Visa con terminaci=C3=B3n 3048 se acaba de usar en el e=
+xterior para la siguiente transacci=C3=B3n:<br><br>
+Comercio: PAYPAL *NAMECHEAP<br>
+Pa=C3=ADs: USA<br>
+Ciudad:  Not Available<br>
+Tarjeta: 3048<br>
+Autorizaci=C3=B3n: 770752<br>
+Referencia: False<br>
+Tipo de transacci=C3=B3n: Compra<br>
+Moneda: USD<br>
+Monto: 10.18<br><br>
+Si no reconoce esta transacci=C3=B3n, por favor llame de inmediato al n=C3=BA=
+mero de servicio al cliente que figura al dorso de su tarjeta Visa. <br>=20
+<br>
+Para darse de baja de este tipo de alertas, inicie sesi=C3=B3n en su cuenta y=
+ actualice sus suscripciones a alertas.</p>
+   =20
+    <p>Alerta de Compras Visa</p>
+
+    <hr>
+    <p> =C2=BFDemasiado contenido en tu bandeja de entrada? <a href=3D"https=
+://purchasealerts.visa.com/vca-web/unsubscribe?lang=3Des-419&amp;communityCo=
+de=3DPA&amp;ExternalCustomerId=3De56dec50-4f44-4ab0-ee73-1dafb72f9a01&amp;Ha=
+shedCustomerId=3DByBCNt52ELyScsYx31ACleZD4+3N2ZCBimAZpMDFEcA=3D&amp;EmailAdd=
+ress=3Ddiego@kiedanski.com"> Anular la suscripci=C3=B3n a las alertas por co=
+rreo electr=C3=B3nico </a> </p>
+    <p> Este correo electr=C3=B3nico se envi=C3=B3 desde una direcci=C3=B3n q=
+ue no puede aceptar mensajes entrantes. Si cree que recibi=C3=B3 este correo=
+ electr=C3=B3nico por error, ign=C3=B3relo o comun=C3=ADquese con nosotros a=
+l VPAAsistencia@visa.com. </p>
+
+
+</div></blockquote></body></html>=
+
+--Apple-Mail-1AF8713B-9119-4777-918A-48664DE39172--

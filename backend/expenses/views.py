@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
-from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig
+from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction
 from . import forms
 from django.views.decorators.http import require_POST, require_GET
 from django.utils import timezone as dj_timezone
@@ -167,6 +167,7 @@ def manage_dashboard(request):
         ("Balances", "expenses:manage_balances"),
         ("Transactions", "expenses:manage_transactions"),
         ("Emails", "expenses:manage_emails"),
+        ("Pending", "expenses:manage_pending_transactions"),
     ]
     return render(request, "manage/dashboard.html", {"resources": resources})
 
@@ -430,6 +431,23 @@ class EmailMessageListView(LoginRequiredMixin, ListView):
             ctx['header_note'] = f"Tu dirección de correo: {cfg.full_address}"
         else:
             ctx['header_note'] = "No tienes una dirección de correo configurada aún."
+        return ctx
+
+
+class PendingTransactionListView(LoginRequiredMixin, ListView):
+    model = PendingTransaction
+    template_name = "manage/list.html"
+
+    def get_queryset(self):
+        return PendingTransaction.objects.filter(user=self.request.user).order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['model_verbose_name'] = 'Pending'
+        ctx['model_verbose_name_plural'] = 'Pending'
+        ctx['create_url_name'] = None
+        ctx['edit_url_name'] = None
+        ctx['delete_url_name'] = None
         return ctx
 
 

@@ -179,6 +179,34 @@ CELERY_TASK_ALWAYS_EAGER = os.environ.get('CELERY_TASK_ALWAYS_EAGER', 'False') =
 CELERY_BEAT_SCHEDULE = {
     'fetch-emails-daily': {
         'task': 'expenses.tasks.fetch_emails_task',
-        'schedule': crontab(hour=4, minute=0),  # 04:00 UTC daily
+        'schedule': crontab(minute='*/5'),  # every 5 minutes
+    },
+}
+
+# Logging (surface INFO logs for email ingestion in local/dev and worker/beat)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(asctime)s %(levelname)s %(name)s: %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'expenses.email_ingest': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': os.environ.get('DJANGO_LOG_LEVEL', 'WARNING'),
     },
 }

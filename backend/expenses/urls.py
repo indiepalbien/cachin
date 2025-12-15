@@ -43,6 +43,8 @@ urlpatterns = [
     
     # Emails
     path("manage/emails/", views.EmailMessageListView.as_view(), name="manage_emails"),
+    # Pending Transactions
+    path("manage/pending/", views.PendingTransactionListView.as_view(), name="manage_pending_transactions"),
     # Quick-add transaction (AJAX-friendly) and suggestion endpoints
     path("quick-transaction/", views.quick_transaction, name="quick_transaction"),
     path("suggest/<str:kind>/", views.suggest, name="suggest"),

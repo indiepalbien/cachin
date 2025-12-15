@@ -13,7 +13,11 @@
   {% endif %}
   <ul>
     {% for obj in object_list %}
-      <li>{{ obj }}
+      <li>
+        {{ obj }}
+        {% if obj.external_id %}<br><small>ID: {{ obj.external_id }}</small>{% endif %}
+        {% if obj.reason %}<br><small>Motivo: {{ obj.reason }}</small>{% endif %}
+        {% if obj.payload %}<br><small>Payload: {{ obj.payload }}</small>{% endif %}
         {% if edit_url_name %} — <a href="{% url edit_url_name obj.pk %}?next={{ request.get_full_path|urlencode }}">Editar</a>{% endif %}
         {% if delete_url_name %} · <a href="{% url delete_url_name obj.pk %}?next={{ request.get_full_path|urlencode }}">Borrar</a>{% endif %}
       </li>

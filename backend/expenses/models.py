@@ -85,22 +85,24 @@ class UserEmailConfig(models.Model):
 
 
 class UserEmailMessage(models.Model):
-        """Stored email messages associated to a user."""
-        user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-        message_id = models.CharField(max_length=255, db_index=True)
-        subject = models.CharField(max_length=500, blank=True)
-        from_address = models.CharField(max_length=500, blank=True)
-        to_addresses = models.TextField(blank=True)  # comma-separated
-        date = models.DateTimeField(null=True, blank=True)
-        raw_eml = models.BinaryField()  # store the raw RFC822 bytes
-        downloaded_at = models.DateTimeField(auto_now_add=True)
+    """Stored email messages associated to a user."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    message_id = models.CharField(max_length=255, db_index=True)
+    subject = models.CharField(max_length=500, blank=True)
+    from_address = models.CharField(max_length=500, blank=True)
+    to_addresses = models.TextField(blank=True)  # comma-separated
+    date = models.DateTimeField(null=True, blank=True)
+    raw_eml = models.BinaryField()  # store the raw RFC822 bytes
+    downloaded_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    processing_error = models.TextField(blank=True)
 
-        class Meta:
-            unique_together = ("user", "message_id")
-            ordering = ["-downloaded_at"]
+    class Meta:
+        unique_together = ("user", "message_id")
+        ordering = ["-downloaded_at"]
 
-        def __str__(self):
-            return f"{self.user} - {self.subject or self.message_id}"
+    def __str__(self):
+        return f"{self.user} - {self.subject or self.message_id}"
 
 class Balance(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -125,6 +127,15 @@ class Transaction(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True)
     comments = models.TextField(blank=True)
     payee = models.ForeignKey(Payee, on_delete=models.SET_NULL, null=True, blank=True)
+    external_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    status = models.CharField(
+        max_length=32,
+        choices=(
+            ("confirmed", "Confirmed"),
+            ("pending_duplicate", "Pending duplicate"),
+        ),
+        default="confirmed",
+    )
 
     def __str__(self):
         return f"{self.date} {self.amount} {self.currency}"
@@ -167,3 +178,16 @@ class Transaction(models.Model):
                 return None
 
         return None
+
+
+class PendingTransaction(models.Model):
+    """Queue of transactions that could not be auto-inserted (e.g., duplicates)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    external_id = models.CharField(max_length=255, db_index=True)
+    payload = models.JSONField()  # parsed fields (description, amount, currency, source, etc.)
+    reason = models.CharField(max_length=64, default="duplicate")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
