@@ -53,4 +53,7 @@ urlpatterns = [
     path("bulk-add/", views.bulk_add_view, name="bulk_add"),
     path("bulk-add/parse/", views.bulk_parse_view, name="bulk_parse"),
     path("bulk-add/confirm/", views.bulk_confirm_view, name="bulk_confirm"),
+
+    path('splitwise/connect/', views.splitwise_connect, name='splitwise_connect'),
+    path('splitwise/callback/', views.splitwise_callback, name='splitwise_callback'),
 ]

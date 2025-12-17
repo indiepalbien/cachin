@@ -16,4 +16,6 @@ dependencies = [
     "mail-parser>=4.1.4",
     "whitenoise>=6.11.0",
     "django-axes>=6.0.0",
+    "requests>=2.32.5",
+    "requests-oauthlib>=2.0.0",
 ]

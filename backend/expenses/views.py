@@ -4,6 +4,7 @@ from django.template import loader
 from django.shortcuts import get_object_or_404, render, redirect
 from django.views import generic
 from django.urls import reverse
+from django.conf import settings
 from django.db.models import F
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
@@ -12,13 +13,18 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
-from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction
+from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount
 from . import forms
 from django.views.decorators.http import require_POST, require_GET
 from django.utils import timezone as dj_timezone
 from decimal import Decimal, InvalidOperation
 import datetime
+import requests
+from requests_oauthlib import OAuth1Session
 from django.core.paginator import Paginator
+import logging
+
+logger = logging.getLogger(__name__)
 
 @login_required
 @require_POST
@@ -843,3 +849,54 @@ def bulk_confirm_view(request):
             "success": False,
             "errors": [f"Error: {str(e)}"]
         }, status=500)
+
+
+REQUEST_TOKEN_URL = 'https://secure.splitwise.com/oauth/request_token'
+AUTHORIZE_URL = 'https://secure.splitwise.com/oauth/authorize'
+ACCESS_TOKEN_URL = 'https://secure.splitwise.com/oauth/access_token'
+API_BASE = 'https://secure.splitwise.com/api/v3.0'
+
+@login_required
+def splitwise_connect(request):
+    callback = request.build_absolute_uri(reverse('expenses:splitwise_callback'))
+    oauth = OAuth1Session(settings.SPLITWISE_CONSUMER_KEY, client_secret=settings.SPLITWISE_CONSUMER_SECRET, callback_uri=callback)
+    fetch_response = oauth.fetch_request_token(REQUEST_TOKEN_URL)
+    request.session['splitwise_oauth_token'] = fetch_response.get('oauth_token')
+    request.session['splitwise_oauth_token_secret'] = fetch_response.get('oauth_token_secret')
+    auth_url = oauth.authorization_url(AUTHORIZE_URL)
+    return redirect(auth_url)
+
+@login_required
+def splitwise_callback(request):
+    token = request.session.get('splitwise_oauth_token')
+    token_secret = request.session.get('splitwise_oauth_token_secret')
+    oauth_verifier = request.GET.get('oauth_verifier')
+    oauth = OAuth1Session(settings.SPLITWISE_CONSUMER_KEY,
+                          client_secret=settings.SPLITWISE_CONSUMER_SECRET,
+                          resource_owner_key=token,
+                          resource_owner_secret=token_secret,
+                          verifier=oauth_verifier)
+    oauth_tokens = oauth.fetch_access_token(ACCESS_TOKEN_URL)
+    access_token = oauth_tokens.get('oauth_token')
+    access_secret = oauth_tokens.get('oauth_token_secret')
+
+    split_user_id = None
+    raw = None
+    try:
+        resp = oauth.get(f"{API_BASE}/get_current_user")
+        if resp.ok:
+            raw = resp.json()
+            split_user = raw.get('user') or {}
+            split_user_id = str(split_user.get('id') or split_user.get('user_id') or '')
+    except Exception:
+        logger.exception("Error obteniendo usuario de Splitwise")
+
+    account, _ = SplitwiseAccount.objects.get_or_create(user=request.user)
+    account.oauth_token = access_token
+    account.oauth_token_secret = access_secret
+    if split_user_id:
+        account.splitwise_user_id = split_user_id
+    if raw:
+        account.raw = raw
+    account.save()
+    return redirect(request.GET.get('next') or '/')

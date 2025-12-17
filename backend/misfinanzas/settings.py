@@ -191,6 +191,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'expenses.tasks.fetch_emails_task',
         'schedule': crontab(minute='*/5'),  # every 5 minutes
     },
+    'sync-splitwise-every-10m': {
+        'task': 'expenses.tasks.sync_all_splitwise',
+        'schedule': crontab(minute='*/10'),  # every 10 minutes
+    },
 }
 
 # Logging (surface INFO logs for email ingestion in local/dev and worker/beat)
@@ -263,3 +267,6 @@ AXES_RESET_ON_SUCCESS = True
 AXES_ONLY_USER_FAILURES = False
 AXES_ONLY_IPV4 = True
 AXES_USE_USER_AGENT = True
+
+SPLITWISE_CONSUMER_KEY = os.getenv('SPLITWISE_CONSUMER_KEY', '')
+SPLITWISE_CONSUMER_SECRET = os.getenv('SPLITWISE_CONSUMER_SECRET', '')

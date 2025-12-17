@@ -191,3 +191,16 @@ class PendingTransaction(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+
+class SplitwiseAccount(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='splitwise')
+    oauth_token = models.CharField(max_length=255, blank=True, null=True)
+    oauth_token_secret = models.CharField(max_length=255, blank=True, null=True)
+    splitwise_user_id = models.CharField(max_length=64, blank=True, null=True)
+    last_synced = models.DateTimeField(null=True, blank=True)
+    raw = models.JSONField(null=True, blank=True)
+
+    def __str__(self):
+        return f"SplitwiseAccount({self.user_id})"

@@ -6,6 +6,12 @@
 
   <!-- Email automation moved to Manage views -->
 
+  {% if user.is_authenticated %}
+  <a class="btn btn-outline-primary" href="{% url 'expenses:splitwise_connect' %}?next={{ request.path }}">
+    Conectar con Splitwise
+  </a>
+  {% endif %}
+
   <!-- Quick-add compact form -->
   <section id="quick-add" style="margin:1rem 0;padding:0.75rem;border:1px solid var(--accent);background:var(--panel);">
     <style>
