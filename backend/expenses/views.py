@@ -114,7 +114,7 @@ def quick_transaction(request):
             user=user,
             date=tx_date,
             description=description,
-            amount=amount_dec,
+            amount=amount_in_usd,
             currency=currency,
             source=source,
             category=category,

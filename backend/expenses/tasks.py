@@ -1,19 +1,18 @@
 import logging
+from datetime import datetime
 
 from celery import shared_task
 from django.core.management import call_command
 
 from expenses.email_ingest import process_new_messages
 from .models import SplitwiseAccount
-import requests
-from requests_oauthlib import OAuth1
+from splitwise import Splitwise
 from django.utils import timezone
 from decimal import Decimal
 from django.conf import settings
 
 
 logger = logging.getLogger(__name__)
-API_BASE = 'https://secure.splitwise.com/api/v3.0'
 
 
 @shared_task
@@ -33,60 +32,105 @@ def sync_splitwise_for_user(user_id):
     if not account.oauth_token or not account.oauth_token_secret:
         return
 
-    auth = OAuth1(settings.SPLITWISE_CONSUMER_KEY,
-                  client_secret=settings.SPLITWISE_CONSUMER_SECRET,
-                  resource_owner_key=account.oauth_token,
-                  resource_owner_secret=account.oauth_token_secret)
-
     try:
-        resp = requests.get(f'{API_BASE}/get_expenses', auth=auth, params={'limit': 100}, timeout=30)
-        resp.raise_for_status()
-        payload = resp.json()
+        # Initialize Splitwise client
+        sObj = Splitwise(
+            settings.SPLITWISE_CONSUMER_KEY,
+            settings.SPLITWISE_CONSUMER_SECRET
+        )
+        sObj.setAccessToken({
+            'oauth_token': account.oauth_token,
+            'oauth_token_secret': account.oauth_token_secret
+        })
+        
+        # Get current user info
+        current_user = sObj.getCurrentUser()
+        current_user_id = current_user.getId()
+        
+        # Get all groups and create a mapping
+        groups = sObj.getGroups()
+        groups_map = {group.getId(): group.getName() for group in groups}
+        
+        # Get recent expenses (last 100)
+        expenses = sObj.getExpenses(limit=100)
+        
     except Exception:
-        logger.exception("Error fetching Splitwise expenses for user %s", user_id)
+        logger.exception("Error fetching Splitwise data for user %s", user_id)
         return
 
-    expenses = payload.get('expenses', []) or []
-    for e in expenses:
+    for expense in expenses:
         try:
-            expense_id = e.get('id') or e.get('expense_id')
+            expense_id = expense.getId()
             external_id = f"splitwise:{expense_id}"
-            user_entry = None
-            for u in e.get('users', []):
-                if str(u.get('user_id') or u.get('id')) == str(account.splitwise_user_id):
-                    user_entry = u
+            
+            # Find current user's share
+            user_share = None
+            for user in expense.getUsers():
+                if user.getId() == current_user_id:
+                    user_share = user
                     break
-            if not user_entry:
+            
+            if not user_share:
+                continue
+            
+            # Get net balance (amount user owes or is owed)
+            net_balance = float(user_share.getNetBalance())
+            amount = abs(Decimal(str(net_balance)))
+            
+            # Skip if amount is zero
+            if amount == 0:
                 continue
 
-            owed = Decimal(str(user_entry.get('owed_share') or '0'))
-            paid_share = Decimal(str(user_entry.get('paid_share') or '0'))
-            amount = None
-            if owed > paid_share:
-                amount = owed
-            elif paid_share > owed:
-                amount = paid_share - owed
+            description = expense.getDescription() or 'Splitwise'
+            currency = expense.getCurrencyCode() or 'USD'
+            
+            # Get group name from group_id
+            group_id = expense.getGroupId()
+            if group_id and group_id != 0:
+                source_name = groups_map.get(group_id, 'Unknown')
+                source = f"split:{source_name}"
             else:
-                continue
+                # For non-group expenses, use the other person's name
+                other_user_name = None
+                for user in expense.getUsers():
+                    if user.getId() != current_user_id:
+                        first = user.getFirstName() or ''
+                        last = user.getLastName() or ''
+                        other_user_name = f"{first} {last}".strip()
+                        if not other_user_name:
+                            email = user.getEmail() or 'Unknown'
+                            other_user_name = email.split('@')[0]
+                        break
+                
+                source = f"split:{other_user_name or 'personal'}"
 
-            description = e.get('description') or e.get('details') or 'Splitwise'
-            group = (e.get('group') or {}).get('name') or (e.get('group_name') or '')
-            if group:
-                source = f"split:{group}"
+            # Parse date
+            expense_date = expense.getDate()
+            if expense_date:
+                try:
+                    date = datetime.strptime(expense_date, "%Y-%m-%dT%H:%M:%SZ").date()
+                except (ValueError, TypeError):
+                    date = timezone.now().date()
             else:
-                first_user = (e.get('users') or [])[0] or {}
-                source = f"split:{first_user.get('name') or 'splitwise'}"
+                date = timezone.now().date()
 
             try:
-                from .models import Transaction
+                from .models import Transaction, Source
+                
+                # Get or create Source instance
+                source_obj, _ = Source.objects.get_or_create(
+                    user_id=user_id,
+                    name=source
+                )
+                
                 tx, created = Transaction.objects.get_or_create(
                     external_id=external_id,
                     defaults={
                         'user_id': user_id,
                         'amount': amount,
                         'description': description,
-                        'source': source,
-                        'date': e.get('date') or timezone.now().date(),
+                        'currency': currency,
+                        'date': date,
                     }
                 )
                 if not created:
@@ -95,15 +139,17 @@ def sync_splitwise_for_user(user_id):
                         tx.amount = amount; updated = True
                     if tx.description != description:
                         tx.description = description; updated = True
-                    if tx.source != source:
-                        tx.source = source; updated = True
+                    if tx.source != source_obj:
+                        tx.source = source_obj; updated = True
+                    if tx.currency != currency:
+                        tx.currency = currency; updated = True
                     if updated:
                         tx.save()
             except Exception:
                 logger.debug("Transaction model ausente o error creando tx", exc_info=True)
 
         except Exception:
-            logger.exception("Error procesando expense %s", e.get('id'))
+            logger.exception("Error procesando expense %s", expense_id)
 
     account.last_synced = timezone.now()
     account.save()

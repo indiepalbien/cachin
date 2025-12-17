@@ -193,7 +193,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     'sync-splitwise-every-10m': {
         'task': 'expenses.tasks.sync_all_splitwise',
-        'schedule': crontab(minute='*/10'),  # every 10 minutes
+        'schedule': crontab(minute='*/5'),  # every 5 minutes
     },
 }
 
