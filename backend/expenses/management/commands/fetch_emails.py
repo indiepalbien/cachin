@@ -94,7 +94,7 @@ class Command(BaseCommand):
                 except Exception:
                     parsed_date = None
 
-            # Try to match any recipient to a known alias
+            # Try to match any recipient to a known alias or forwarding email
             matched_user_id = None
             for rcpt in (tos + cc):
                 # Extract email address part
@@ -102,12 +102,17 @@ class Command(BaseCommand):
                 if '<' in rcpt and '>' in rcpt:
                     addr = rcpt.split('<')[-1].split('>')[0]
                 addr = addr.strip().lower()
+                # Check against cachinapp.com aliases first
                 if addr in alias_map:
                     matched_user_id = alias_map[addr]
                     break
+                # Check against forwarding emails (for direct sends)
+                if addr in forwarding_map:
+                    matched_user_id = forwarding_map[addr]
+                    break
 
             if not matched_user_id and from_addr:
-                # Try to match From address against forwarding_map
+                # Try to match From address against forwarding_map (for forwarded emails)
                 from_email = from_addr
                 if '<' in from_addr and '>' in from_addr:
                     from_email = from_addr.split('<')[-1].split('>')[0]

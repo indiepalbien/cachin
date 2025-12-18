@@ -16,21 +16,20 @@
 
     <form method="post" action="{% url 'expenses:update_forwarding_email' %}">
       {% csrf_token %}
-      <label for="forwarding_email" style="display: block; margin-bottom: 0.5rem;">Tu email personal:</label>
+      <label for="forwarding_email" style="display: block; margin-bottom: 0.5rem; font-weight: 700;">Tu email personal:</label>
       <input
         type="email"
         id="forwarding_email"
         name="forwarding_email"
         value="{{ email_config.forwarding_email|default:'' }}"
         placeholder="ejemplo@gmail.com"
-        style="width: 300px; padding: 0.5rem; border: 2px solid #333;"
+        style="width: 300px; padding: 0.5rem; border: 3px solid #0f172a; font-family: inherit;"
       >
-      <button type="submit" style="padding: 0.5rem 1rem; margin-left: 0.5rem; border: 2px solid #333; background: #fff; cursor: pointer;">Guardar</button>
+      <button type="submit">Actualizar</button>
 
       {% if email_config.forwarding_email %}
-      <button type="submit" onclick="document.getElementById('forwarding_email').value=''; return true;"
-              style="padding: 0.5rem 1rem; margin-left: 0.5rem; border: 2px solid #333; background: #fff; cursor: pointer;">
-        Limpiar
+      <button type="button" onclick="document.getElementById('forwarding_email').value=''; this.form.submit();" style="background: #666;">
+        Borrar
       </button>
       {% endif %}
     </form>
