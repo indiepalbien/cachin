@@ -105,46 +105,60 @@ def sync_splitwise_for_user(user_id):
         # Get all groups and create a mapping
         groups = sObj.getGroups()
         groups_map = {group.getId(): group.getName() for group in groups}
-        
+        logger.info(f"Found {len(groups)} Splitwise groups: {groups_map}")
+
         # Get recent expenses (last 100)
         expenses = sObj.getExpenses(limit=100)
-        
+        logger.info(f"Fetched {len(expenses)} Splitwise expenses")
+
     except Exception:
         logger.exception("Error fetching Splitwise data for user %s", user_id)
         return
 
     transactions_created = 0
     transactions_updated = 0
+    skipped_no_share = 0
+    skipped_zero_amount = 0
+
     for expense in expenses:
         try:
             expense_id = expense.getId()
             external_id = f"splitwise:{expense_id}"
-            
+            description = expense.getDescription() or 'Splitwise'
+
+            # Get group info for logging
+            group_id = expense.getGroupId()
+            group_name = groups_map.get(group_id, 'Unknown') if group_id and group_id != 0 else 'non-group'
+
             # Find current user's share
             user_share = None
             for user in expense.getUsers():
                 if user.getId() == current_user_id:
                     user_share = user
                     break
-            
+
             if not user_share:
+                logger.info(f"[SKIP] Expense {expense_id} ({description}) from {group_name}: user not participant")
+                skipped_no_share += 1
                 continue
-            
+
             # Get net balance (amount user owes or is owed)
             # Positive net_balance in Splitwise = user owes/paid (expense) = should be NEGATIVE in our app
             # Negative net_balance in Splitwise = user is owed (income) = should be POSITIVE in our app
             net_balance = float(user_share.getNetBalance())
             amount = Decimal(str(-net_balance))  # Invert sign
-            
+
             # Skip if amount is zero
             if amount == 0:
+                logger.info(f"[SKIP] Expense {expense_id} ({description}) from {group_name}: zero net balance")
+                skipped_zero_amount += 1
                 continue
 
-            description = expense.getDescription() or 'Splitwise'
+            logger.info(f"[PROCESS] Expense {expense_id} ({description}) from {group_name}: amount={amount}, net_balance={net_balance}")
+
             currency = expense.getCurrencyCode() or 'USD'
-            
+
             # Get group name from group_id
-            group_id = expense.getGroupId()
             if group_id and group_id != 0:
                 source_name = groups_map.get(group_id, 'Unknown')
                 source = f"split:{source_name}"
@@ -195,31 +209,37 @@ def sync_splitwise_for_user(user_id):
                 )
                 if created:
                     transactions_created += 1
+                    logger.info(f"[CREATE] Transaction {external_id} created: {description} - {amount} {currency}")
                 else:
                     updated = False
+                    changes = []
                     if tx.amount != amount:
-                        tx.amount = amount; updated = True
+                        tx.amount = amount; updated = True; changes.append(f"amount: {tx.amount} -> {amount}")
                     if tx.description != description:
-                        tx.description = description; updated = True
+                        tx.description = description; updated = True; changes.append(f"description: {tx.description} -> {description}")
                     if tx.source != source_obj:
-                        tx.source = source_obj; updated = True
+                        tx.source = source_obj; updated = True; changes.append(f"source: {tx.source} -> {source_obj}")
                     if tx.currency != currency:
-                        tx.currency = currency; updated = True
+                        tx.currency = currency; updated = True; changes.append(f"currency: {tx.currency} -> {currency}")
                     if updated:
                         transactions_updated += 1
                         tx.save()
+                        logger.info(f"[UPDATE] Transaction {external_id} updated: {', '.join(changes)}")
+                    else:
+                        logger.debug(f"[SKIP] Transaction {external_id} unchanged")
             except Exception:
-                logger.debug("Transaction model ausente o error creando tx", exc_info=True)
+                logger.exception(f"Transaction error for expense {expense_id}")
 
         except Exception:
             logger.exception("Error procesando expense %s", expense_id)
 
     account.last_synced = timezone.now()
     account.save()
-    
+
     logger.info(
-        f"Splitwise sync for user {account.user.username} (ID: {user_id}): "
-        f"{transactions_created} new, {transactions_updated} updated"
+        f"Splitwise sync for user {account.user.username} (ID: {user_id}) COMPLETE: "
+        f"{transactions_created} created, {transactions_updated} updated, "
+        f"{skipped_zero_amount} skipped (zero amount), {skipped_no_share} skipped (not participant)"
     )
     
     return {
