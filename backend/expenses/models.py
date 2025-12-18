@@ -215,18 +215,31 @@ class Transaction(models.Model):
 
         return None
 
-    def to_usd(self):
+    def to_usd(self, recalculate=False):
         """Return amount converted to USD.
-        
-        Uses pre-calculated amount_usd if available, otherwise calculates on-the-fly.
-        Returns Decimal or None if no rate found.
+
+        Uses pre-calculated amount_usd if available, unless recalculate=True.
+        If amount_usd is None, calculates and saves it.
+
+        Args:
+            recalculate: Force recalculation even if cached value exists
+
+        Returns:
+            Decimal or None if no rate found.
         """
-        # Use pre-calculated value if available
-        if self.amount_usd is not None:
+        # If we have cached value and not forcing recalculation, use it
+        if self.amount_usd is not None and not recalculate:
             return self.amount_usd
-        
-        # Fallback to calculation (for backward compatibility with old records)
-        return self._calculate_usd()
+
+        # Calculate new value
+        calculated = self._calculate_usd()
+
+        # Save to database for future use
+        if calculated is not None:
+            self.amount_usd = calculated
+            self.save(update_fields=['amount_usd'])
+
+        return calculated
 
 
 class PendingTransaction(models.Model):
