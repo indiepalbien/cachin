@@ -220,6 +220,34 @@ def manage_dashboard(request):
     return render(request, "manage/dashboard.html", {"resources": resources})
 
 
+def _update_transaction_category(request, user):
+    """Helper to update transaction category/comments. Returns (success, message, tx_id)."""
+    tx_id = request.POST.get("tx_id")
+    category_id = request.POST.get("category_id")
+    comments = (request.POST.get("comments") or "").strip()
+
+    if not tx_id:
+        return (False, "ID de transacción requerido.", None)
+
+    try:
+        tx = Transaction.objects.get(pk=tx_id, user=user)
+    except Transaction.DoesNotExist:
+        return (False, "Transacción no encontrada.", None)
+
+    category = None
+    if category_id:
+        try:
+            category = Category.objects.get(pk=category_id, user=user)
+        except Category.DoesNotExist:
+            return (False, "Categoría no encontrada.", None)
+
+    tx.category = category
+    tx.comments = comments
+    tx.save(update_fields=["category", "comments"])
+
+    return (True, f"Transacción '{tx.description}' actualizada.", tx.id)
+
+
 @login_required
 def categorize_transactions(request):
     """View to add categories and assign them to uncategorized transactions in one place."""
@@ -242,21 +270,29 @@ def categorize_transactions(request):
             return redirect("expenses:categorize_transactions")
 
         if action == "assign_tx":
-            tx_id = request.POST.get("tx_id")
-            category_id = request.POST.get("category_id")
-            comments = (request.POST.get("comments") or "").strip()
+            success, message, tx_id = _update_transaction_category(request, user)
 
-            tx = get_object_or_404(Transaction, pk=tx_id, user=user)
-            category = None
-            if category_id:
-                category = get_object_or_404(Category, pk=category_id, user=user)
+            # AJAX response
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                if success:
+                    return JsonResponse({
+                        "success": True,
+                        "message": message,
+                        "tx_id": tx_id
+                    })
+                else:
+                    return JsonResponse({
+                        "success": False,
+                        "errors": [message]
+                    }, status=400)
 
-            tx.category = category
-            tx.comments = comments
-            tx.save(update_fields=["category", "comments"])
-
-            messages.success(request, f"Transacción '{tx.description}' actualizada.")
-            return redirect(reverse("expenses:categorize_transactions") + f"#tx-{tx.id}")
+            # Traditional POST response (fallback)
+            if success:
+                messages.success(request, message)
+                return redirect(reverse("expenses:categorize_transactions") + f"#tx-{tx_id}")
+            else:
+                messages.error(request, message)
+                return redirect("expenses:categorize_transactions")
 
         messages.error(request, "Acción no reconocida.")
         return redirect("expenses:categorize_transactions")

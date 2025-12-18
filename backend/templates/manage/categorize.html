@@ -1,3 +1,4 @@
+{% load static %}
 {% extends 'base.html' %}
 
 {% block title %}Categorizar transacciones{% endblock %}
@@ -81,4 +82,33 @@
     <p style="margin:0">No hay transacciones sin categoría. 🎉</p>
   {% endif %}
 </section>
+
+<script src="{% static 'expenses/categorize-autosave.js' %}" defer></script>
+<style>
+/* Auto-save status indicators */
+.save-status {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.5rem;
+  border-radius: 3px;
+  transition: opacity 0.3s ease;
+  display: inline-block;
+}
+
+.save-status-idle { opacity: 0; }
+.save-status-typing { color: #6b7280; opacity: 0.7; }
+.save-status-saving { color: #3b82f6; background-color: #dbeafe; opacity: 1; }
+.save-status-success { color: #059669; background-color: #d1fae5; opacity: 1; }
+.save-status-error { color: #dc2626; background-color: #fee2e2; opacity: 1; font-weight: 500; }
+
+/* Progressive enhancement: hide save buttons when JS loads */
+body.js-loaded form[id^="tx-"] button[type="submit"] {
+  display: none !important;
+}
+</style>
+
+<script>
+// Mark body as JS-loaded for progressive enhancement
+document.body.classList.add('js-loaded');
+</script>
 {% endblock %}
