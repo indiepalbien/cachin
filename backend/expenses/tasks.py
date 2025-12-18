@@ -214,8 +214,8 @@ def sync_splitwise_for_user(user_id):
                 
                 tx, created = Transaction.objects.get_or_create(
                     external_id=external_id,
+                    user_id=user_id,  # Include user in lookup - multiple users can share same expense
                     defaults={
-                        'user_id': user_id,
                         'amount': amount,
                         'description': description,
                         'currency': currency,
