@@ -199,7 +199,8 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 .5rem 0">
       <h2 style="margin:0">Gastos por categoría</h2>
       <label style="font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:0.35rem">
-        <input type="checkbox" id="convert-to-usd" style="cursor:pointer">
+        <input type="checkbox" id="convert-to-usd" style="cursor:pointer"
+               {% if user_preferences.convert_expenses_to_usd %}checked{% endif %}>
         <span>Convertir a USD</span>
       </label>
     </div>
@@ -277,11 +278,6 @@
         currentMonth = data.selected_month_str;
         currentMonthStr = data.m_current;
 
-        // Sync checkbox with backend preference (on first load)
-        if (convertCheckbox.checked !== data.convert_to_usd) {
-          convertCheckbox.checked = data.convert_to_usd;
-        }
-
         // Update month label
         label.textContent = `Mes ${data.selected_month_str}`;
 
@@ -353,7 +349,9 @@
 
     // Handle checkbox change
     convertCheckbox.addEventListener('change', async () => {
-      // Save preference to backend
+      // Disable checkbox during save to prevent double-clicks
+      convertCheckbox.disabled = true;
+
       try {
         const formData = new FormData();
         formData.append('key', 'convert_expenses_to_usd');
@@ -367,18 +365,27 @@
           }
         });
 
-        if (response.ok) {
-          // Reload with current month
-          loadCategoryExpenses(currentMonth);
-        } else {
-          console.error('Failed to save preference');
-          // Revert checkbox on error
-          convertCheckbox.checked = !convertCheckbox.checked;
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to save preference');
         }
+
+        // Reload all three expense views
+        loadCategoryExpenses(currentMonth);
+        window.dispatchEvent(new Event('convertPreferenceChanged'));
+
       } catch (error) {
         console.error('Error saving preference:', error);
-        // Revert checkbox on error
+
+        // Show user-visible error
+        alert('Error al guardar la preferencia. Intentá de nuevo.');
+
+        // Revert checkbox to previous state
         convertCheckbox.checked = !convertCheckbox.checked;
+
+      } finally {
+        // Re-enable checkbox
+        convertCheckbox.disabled = false;
       }
     });
 
@@ -414,8 +421,7 @@
 
     async function loadProjectExpenses() {
       try {
-        const convertParam = convertCheckbox.checked ? 'true' : 'false';
-        const response = await fetch(`/expenses/api/project-expenses/?convert_usd=${convertParam}`);
+        const response = await fetch('/expenses/api/project-expenses/');
         const data = await response.json();
 
         // Build warning message if missing rates
@@ -472,8 +478,8 @@
       }
     }
 
-    // Reload when convert checkbox changes
-    convertCheckbox.addEventListener('change', loadProjectExpenses);
+    // Listen for preference changes from the main checkbox handler
+    window.addEventListener('convertPreferenceChanged', loadProjectExpenses);
 
     // Initial load
     loadProjectExpenses();
@@ -493,10 +499,9 @@
       const currentLink = document.querySelector('#src-month-nav a[data-action="current"]');
 
       try {
-        const convertParam = convertCheckbox.checked ? 'true' : 'false';
         const url = monthParam
-          ? `/expenses/api/source-expenses/?m=${monthParam}&convert_usd=${convertParam}`
-          : `/expenses/api/source-expenses/?convert_usd=${convertParam}`;
+          ? `/expenses/api/source-expenses/?m=${monthParam}`
+          : '/expenses/api/source-expenses/';
 
         const response = await fetch(url);
         const data = await response.json();
@@ -581,8 +586,8 @@
       loadSourceExpenses(null);
     });
 
-    // Reload when convert checkbox changes
-    convertCheckbox.addEventListener('change', () => {
+    // Listen for preference changes from the main checkbox handler
+    window.addEventListener('convertPreferenceChanged', () => {
       // Use current month or null to reload the currently displayed month
       loadSourceExpenses(srcCurrentMonthStr || null);
     });

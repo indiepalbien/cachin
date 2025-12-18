@@ -20,7 +20,7 @@ from . import forms
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone as dj_timezone
 from decimal import Decimal, InvalidOperation
 import datetime
@@ -878,6 +878,16 @@ def profile(request):
     """Simple profile page showing username."""
     # Provide user's existing options server-side so the profile quick-add doesn't depend on JS timing
     user = request.user
+
+    # Get user preferences (create if doesn't exist)
+    try:
+        user_prefs = user.preferences
+    except UserPreferences.DoesNotExist:
+        user_prefs = UserPreferences.objects.create(
+            user=user,
+            convert_expenses_to_usd=False  # default
+        )
+
     categories = Category.objects.filter(user=user).order_by('name').values_list('name', flat=True)
     projects = Project.objects.filter(user=user).order_by('name').values_list('name', flat=True)
     payees = Payee.objects.filter(user=user).order_by('name').values_list('name', flat=True)
@@ -896,6 +906,7 @@ def profile(request):
     # Category expenses now loaded independently via AJAX (api_category_expenses endpoint)
     context = {
         'user': user,
+        'user_preferences': user_prefs,
         'qa_categories': list(categories),
         'qa_projects': list(projects),
         'qa_payees': list(payees),
@@ -1360,18 +1371,12 @@ def api_category_expenses(request):
         except Exception:
             pass
 
-    # Determine if we should convert to USD
-    # Check URL parameter first, then user preference
-    convert_usd_param = request.GET.get('convert_usd', '')
-    if convert_usd_param:
-        convert_to_usd = convert_usd_param == 'true'
-    else:
-        # Get user preference (default to False)
-        try:
-            prefs = user.preferences
-            convert_to_usd = prefs.convert_expenses_to_usd
-        except UserPreferences.DoesNotExist:
-            convert_to_usd = False
+    # Get user preference from database (default to False)
+    try:
+        prefs = user.preferences
+        convert_to_usd = prefs.convert_expenses_to_usd
+    except UserPreferences.DoesNotExist:
+        convert_to_usd = False
 
     # Get transactions for selected month
     first_day = datetime.date(sel_year, sel_month, 1)
@@ -1406,17 +1411,12 @@ def api_project_expenses(request):
     """API endpoint: Return total expenses by project (all time, no month filter)."""
     user = request.user
 
-    # Determine if we should convert to USD
-    convert_usd_param = request.GET.get('convert_usd', '')
-    if convert_usd_param:
-        convert_to_usd = convert_usd_param == 'true'
-    else:
-        # Get user preference (default to False)
-        try:
-            prefs = user.preferences
-            convert_to_usd = prefs.convert_expenses_to_usd
-        except UserPreferences.DoesNotExist:
-            convert_to_usd = False
+    # Get user preference from database (default to False)
+    try:
+        prefs = user.preferences
+        convert_to_usd = prefs.convert_expenses_to_usd
+    except UserPreferences.DoesNotExist:
+        convert_to_usd = False
 
     # Get all transactions with amount > 0 AND with a project (filter out null projects)
     all_txs = Transaction.objects.filter(user=user, amount__gt=0, project__isnull=False)
@@ -1506,17 +1506,12 @@ def api_source_expenses(request):
         except Exception:
             pass
 
-    # Determine if we should convert to USD
-    convert_usd_param = request.GET.get('convert_usd', '')
-    if convert_usd_param:
-        convert_to_usd = convert_usd_param == 'true'
-    else:
-        # Get user preference (default to False)
-        try:
-            prefs = user.preferences
-            convert_to_usd = prefs.convert_expenses_to_usd
-        except UserPreferences.DoesNotExist:
-            convert_to_usd = False
+    # Get user preference from database (default to False)
+    try:
+        prefs = user.preferences
+        convert_to_usd = prefs.convert_expenses_to_usd
+    except UserPreferences.DoesNotExist:
+        convert_to_usd = False
 
     # Get transactions for selected month with source (filter out null sources)
     first_day = datetime.date(sel_year, sel_month, 1)
@@ -1634,15 +1629,22 @@ def update_user_preference(request):
     preference_value = request.POST.get('value')
 
     if preference_key == 'convert_expenses_to_usd':
-        # Get or create user preferences
-        prefs, created = UserPreferences.objects.get_or_create(user=request.user)
-        prefs.convert_expenses_to_usd = preference_value == 'true'
-        prefs.save()
+        try:
+            with transaction.atomic():
+                # Get or create user preferences
+                prefs, created = UserPreferences.objects.get_or_create(user=request.user)
+                prefs.convert_expenses_to_usd = (preference_value == 'true')
+                prefs.save()
 
-        return JsonResponse({
-            'success': True,
-            'message': 'Preference updated'
-        })
+            return JsonResponse({
+                'success': True,
+                'message': 'Preference updated'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
 
     return JsonResponse({
         'success': False,
