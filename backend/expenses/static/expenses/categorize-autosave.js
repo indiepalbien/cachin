@@ -44,7 +44,10 @@
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), SAVE_TIMEOUT);
 
-      const response = await fetch(formElement.action, {
+      // Use getAttribute to avoid conflict with input name="action"
+      const actionUrl = formElement.getAttribute('action') || window.location.pathname;
+
+      const response = await fetch(actionUrl, {
         method: 'POST',
         body: formData,
         headers: {
