@@ -246,3 +246,79 @@ class SplitwiseAccount(models.Model):
 
     def __str__(self):
         return f"SplitwiseAccount({self.user_id})"
+
+
+class CategorizationRule(models.Model):
+    """
+    Smart rule-based categorization system.
+    
+    When a user categorizes a transaction, rules are created based on:
+    - Description tokens (sanitized, excluding generic words)
+    - Amount and currency combinations
+    - Category and payee assignments
+    
+    Rules are applied automatically to uncategorized transactions.
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    
+    # Rule components
+    description_tokens = models.CharField(
+        max_length=500,
+        help_text="Space-separated tokens from transaction description"
+    )
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Specific amount if part of the rule"
+    )
+    currency = models.CharField(
+        max_length=3,
+        null=True,
+        blank=True,
+        help_text="Currency code (e.g., USD, UYU)"
+    )
+    
+    # Predictions
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    payee = models.ForeignKey(
+        Payee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    
+    # Metadata
+    usage_count = models.IntegerField(default=0, help_text="Times this rule has been used")
+    accuracy = models.FloatField(
+        default=1.0,
+        help_text="Accuracy score (0-1) based on matching transactions"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ["-usage_count", "-created_at"]
+        indexes = [
+            models.Index(fields=["user", "description_tokens"], name="rule_user_tokens"),
+            models.Index(fields=["user", "created_at"], name="rule_user_created"),
+        ]
+    
+    def __str__(self):
+        rule_parts = [self.description_tokens]
+        if self.amount:
+            rule_parts.append(f"{self.amount}")
+        if self.currency:
+            rule_parts.append(self.currency)
+        return f"Rule: {' + '.join(rule_parts)} → {self.category or self.payee or 'uncategorized'}"
+    
+    def increment_usage(self):
+        """Increment usage counter."""
+        self.usage_count += 1
+        self.save(update_fields=['usage_count', 'updated_at'])
