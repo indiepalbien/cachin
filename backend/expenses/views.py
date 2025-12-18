@@ -315,6 +315,112 @@ def categorize_transactions(request):
     return render(request, "manage/categorize.html", context)
 
 
+@login_required
+def edit_category_transactions(request):
+    """View to edit transactions filtered by category and optionally currency/month."""
+    user = request.user
+
+    # Get filter parameters
+    category_name = request.GET.get('category', '')
+    currency = request.GET.get('currency', '')
+    month_param = request.GET.get('month', '')  # Format: YYYY-MM
+
+    if not category_name:
+        messages.error(request, "Categoría requerida.")
+        return redirect("expenses:profile")
+
+    if request.method == "POST":
+        action = request.POST.get("action") or ""
+
+        if action == "assign_tx":
+            success, message, tx_id = _update_transaction_category(request, user)
+
+            # AJAX response
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                if success:
+                    return JsonResponse({
+                        "success": True,
+                        "message": message,
+                        "tx_id": tx_id
+                    })
+                else:
+                    return JsonResponse({
+                        "success": False,
+                        "errors": [message]
+                    }, status=400)
+
+            # Traditional POST response (fallback)
+            if success:
+                messages.success(request, message)
+            else:
+                messages.error(request, message)
+
+            # Redirect back with same filters
+            params = f"?category={category_name}"
+            if currency:
+                params += f"&currency={currency}"
+            if month_param:
+                params += f"&month={month_param}"
+            return redirect(reverse("expenses:edit_category_transactions") + params)
+
+        messages.error(request, "Acción no reconocida.")
+        return redirect("expenses:edit_category_transactions")
+
+    # Build queryset with filters
+    if category_name == 'Sin categoría':
+        transactions_qs = Transaction.objects.filter(user=user, category__isnull=True)
+    else:
+        try:
+            category = Category.objects.get(user=user, name=category_name)
+            transactions_qs = Transaction.objects.filter(user=user, category=category)
+        except Category.DoesNotExist:
+            messages.error(request, f"Categoría '{category_name}' no encontrada.")
+            return redirect("expenses:profile")
+
+    # Apply currency filter if provided
+    if currency:
+        transactions_qs = transactions_qs.filter(currency=currency)
+
+    # Apply month filter if provided
+    if month_param:
+        try:
+            year, month = map(int, month_param.split('-'))
+            import calendar
+            last_day = calendar.monthrange(year, month)[1]
+            start_date = datetime.date(year, month, 1)
+            end_date = datetime.date(year, month, last_day)
+            transactions_qs = transactions_qs.filter(date__gte=start_date, date__lte=end_date)
+        except (ValueError, AttributeError):
+            pass  # Invalid month format, skip filter
+
+    transactions_qs = transactions_qs.select_related("source", "project", "payee", "category").order_by("-date", "-id")
+
+    # Pagination
+    page_number = request.GET.get("page") or 1
+    paginator = Paginator(transactions_qs, 25)
+    tx_page = paginator.get_page(page_number)
+
+    # Get all categories for the dropdown
+    categories = Category.objects.filter(user=user).order_by("name")
+
+    # Build filter description for display
+    filter_desc = f"Categoría: {category_name}"
+    if currency:
+        filter_desc += f" | Moneda: {currency}"
+    if month_param:
+        filter_desc += f" | Mes: {month_param}"
+
+    context = {
+        "categories": categories,
+        "tx_page": tx_page,
+        "category_name": category_name,
+        "currency": currency,
+        "month_param": month_param,
+        "filter_desc": filter_desc,
+    }
+    return render(request, "manage/edit_category_transactions.html", context)
+
+
 class OwnerRequiredMixin(UserPassesTestMixin):
     def test_func(self):
         obj = self.get_object()

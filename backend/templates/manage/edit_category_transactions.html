@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar transacciones - {{ category_name }}{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'expenses:profile' %}">← Volver al perfil</a></p>
+<h1>Editar transacciones</h1>
+
+<section style="margin:1rem 0;padding:0.75rem;border:1px solid var(--accent);background:var(--panel);">
+  <h2 style="margin-top:0">Filtros aplicados</h2>
+  <p style="margin:0.5rem 0;"><strong>{{ filter_desc }}</strong></p>
+  {% if tx_page and tx_page.paginator.count %}
+    <p style="margin:0.5rem 0 0 0;color:var(--muted);">Total: {{ tx_page.paginator.count }} transacciones</p>
+  {% endif %}
+</section>
+
+<section style="margin:1rem 0;padding:0.75rem;border:1px solid var(--accent);background:var(--panel);">
+  <h2 style="margin-top:0">Transacciones</h2>
+  {% if tx_page and tx_page.object_list %}
+    <p style="margin-top:0;color:var(--muted);">Mostrando {{ tx_page.object_list|length }} de {{ tx_page.paginator.count }}.</p>
+    <div style="display:grid;grid-template-columns:1fr;gap:0.75rem;">
+      {% for tx in tx_page %}
+        <form id="tx-{{ tx.id }}" action="" method="post" style="padding:0.6rem;border:1px solid var(--border);background:#fff;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="assign_tx">
+          <input type="hidden" name="tx_id" value="{{ tx.id }}">
+          <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
+            <div style="flex:2 1 240px;">
+              <strong>{{ tx.description }}</strong>
+              <div style="font-size:0.9rem;color:var(--muted);">{{ tx.date }} · {{ tx.currency }} {{ tx.amount }}</div>
+              {% if tx.source %}<div style="font-size:0.9rem;color:var(--muted);">Origen: {{ tx.source.name }}</div>{% endif %}
+              {% if tx.project %}<div style="font-size:0.9rem;color:var(--muted);">Proyecto: {{ tx.project.name }}</div>{% endif %}
+              {% if tx.payee %}<div style="font-size:0.9rem;color:var(--muted);">Beneficiario: {{ tx.payee.name }}</div>{% endif %}
+            </div>
+            <div style="flex:1 1 180px;min-width:180px;">
+              <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Categoría</label>
+              <select name="category_id" style="width:100%;padding:0.45rem 0.55rem;">
+                <option value="">Sin categoría</option>
+                {% for cat in categories %}
+                  <option value="{{ cat.id }}" {% if tx.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div style="flex:1 1 220px;min-width:220px;">
+              <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Comentario</label>
+              <textarea name="comments" rows="2" style="width:100%;padding:0.45rem 0.55rem;">{{ tx.comments }}</textarea>
+            </div>
+            <div style="flex:0 0 auto;align-self:flex-end;">
+              <button type="submit">Guardar</button>
+            </div>
+          </div>
+        </form>
+      {% endfor %}
+    </div>
+    {% if tx_page.has_previous or tx_page.has_next %}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.75rem;">
+        <div>
+          {% if tx_page.has_previous %}
+            <a href="?page={{ tx_page.previous_page_number }}&category={{ category_name }}{% if currency %}&currency={{ currency }}{% endif %}{% if month_param %}&month={{ month_param }}{% endif %}">« Anterior</a>
+          {% endif %}
+        </div>
+        <div>Página {{ tx_page.number }} de {{ tx_page.paginator.num_pages }}</div>
+        <div>
+          {% if tx_page.has_next %}
+            <a href="?page={{ tx_page.next_page_number }}&category={{ category_name }}{% if currency %}&currency={{ currency }}{% endif %}{% if month_param %}&month={{ month_param }}{% endif %}">Siguiente »</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <p style="margin:0">No se encontraron transacciones con estos filtros.</p>
+  {% endif %}
+</section>
+
+<script src="{% static 'expenses/categorize-autosave.js' %}" defer></script>
+<style>
+/* Auto-save status indicators */
+.save-status {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.5rem;
+  border-radius: 3px;
+  transition: opacity 0.3s ease;
+  display: inline-block;
+}
+
+.save-status-idle { opacity: 0; }
+.save-status-typing { color: #6b7280; opacity: 0.7; }
+.save-status-saving { color: #3b82f6; background-color: #dbeafe; opacity: 1; }
+.save-status-success { color: #059669; background-color: #d1fae5; opacity: 1; }
+.save-status-error { color: #dc2626; background-color: #fee2e2; opacity: 1; font-weight: 500; }
+
+/* Progressive enhancement: hide save buttons when JS loads */
+body.js-loaded form[id^="tx-"] button[type="submit"] {
+  display: none !important;
+}
+</style>
+
+<script>
+// Mark body as JS-loaded for progressive enhancement
+document.body.classList.add('js-loaded');
+</script>
+{% endblock %}

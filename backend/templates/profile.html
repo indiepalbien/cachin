@@ -241,7 +241,16 @@
 
           data.cat_expenses.forEach(row => {
             html += '<tr>';
-            html += `<td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">${row.category}</td>`;
+
+            // Build the URL for filtering transactions
+            const categoryParam = encodeURIComponent(row.category);
+            const currencyParam = data.convert_to_usd ? '' : `&currency=${encodeURIComponent(row.currency)}`;
+            const monthParam = `&month=${encodeURIComponent(data.selected_month_str)}`;
+            const filterUrl = `/expenses/manage/category-transactions/?category=${categoryParam}${currencyParam}${monthParam}`;
+
+            html += `<td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">`;
+            html += `<a href="${filterUrl}" style="color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)">${row.category}</a>`;
+            html += `</td>`;
 
             if (!data.convert_to_usd) {
               html += `<td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">${row.currency}</td>`;

@@ -7,6 +7,7 @@ urlpatterns = [
     # Management dashboard and CRUD routes for finance models
     path("manage/", views.manage_dashboard, name="manage_dashboard"),
     path("manage/categorizar/", views.categorize_transactions, name="categorize_transactions"),
+    path("manage/category-transactions/", views.edit_category_transactions, name="edit_category_transactions"),
     path("manage/categories/", views.CategoryListView.as_view(), name="manage_categories"),
     path("manage/categories/add/", views.CategoryCreateView.as_view(), name="manage_category_add"),
     path("manage/categories/<int:pk>/edit/", views.CategoryUpdateView.as_view(), name="manage_category_edit"),
