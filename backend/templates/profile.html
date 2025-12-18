@@ -221,9 +221,14 @@
     </div>
   </section>
 
-  <!-- Gastos por origen (total, sin filtro de mes) -->
+  <!-- Gastos por origen (mensual, con navegación) -->
   <section id="source-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
-    <h2 style="margin:0 0 .5rem 0">Gastos por origen (Total)</h2>
+    <h2 style="margin:0 0 .5rem 0">Gastos por origen</h2>
+    <div id="src-month-nav" style="text-align:center;margin:.25rem 0 .5rem 0">
+      <a href="#" data-action="prev">« Mes anterior</a>
+      <span id="src-month-label" style="margin:0 .75rem">Cargando...</span>
+      <a href="#" data-action="current" style="display:none">Mes actual »</a>
+    </div>
     <div id="src-expenses-content">
       <p style="text-align:center;color:#999">Cargando gastos...</p>
     </div>
@@ -467,16 +472,39 @@
   </script>
 
   <script>
-  // Source expenses (all time, no month filter)
-  (async function() {
-    const content = document.getElementById('src-expenses-content');
+  // Source expenses (monthly with navigation)
+  (function() {
+    let srcCurrentMonth = null;
+    let srcCurrentMonthStr = null;
     const convertCheckbox = document.getElementById('convert-to-usd');
 
-    async function loadSourceExpenses() {
+    async function loadSourceExpenses(monthParam) {
+      const content = document.getElementById('src-expenses-content');
+      const monthLabel = document.getElementById('src-month-label');
+      const currentLink = document.querySelector('#src-month-nav a[data-action="current"]');
+
       try {
         const convertParam = convertCheckbox.checked ? 'true' : 'false';
-        const response = await fetch(`/expenses/api/source-expenses/?convert_usd=${convertParam}`);
+        const url = monthParam
+          ? `/expenses/api/source-expenses/?m=${monthParam}&convert_usd=${convertParam}`
+          : `/expenses/api/source-expenses/?convert_usd=${convertParam}`;
+
+        const response = await fetch(url);
         const data = await response.json();
+
+        // Update state
+        srcCurrentMonth = data.m_prev;
+        srcCurrentMonthStr = data.selected_month_str;
+
+        // Update month label
+        monthLabel.textContent = data.selected_month_str;
+
+        // Show/hide "Mes actual" link
+        if (data.selected_month_str === data.m_current) {
+          currentLink.style.display = 'none';
+        } else {
+          currentLink.style.display = 'inline';
+        }
 
         // Build warning message if missing rates
         let warningHtml = '';
@@ -515,7 +543,7 @@
           html += '</tbody></table>';
           content.innerHTML = html;
         } else {
-          content.innerHTML = warningHtml + '<p style="padding:.3rem 0">Sin gastos registrados.</p>';
+          content.innerHTML = warningHtml + '<p style="padding:.3rem 0">Sin gastos en este mes.</p>';
         }
       } catch (error) {
         console.error('Error loading source expenses:', error);
@@ -523,8 +551,21 @@
       }
     }
 
+    // Navigation handlers
+    document.querySelector('#src-month-nav a[data-action="prev"]').addEventListener('click', (e) => {
+      e.preventDefault();
+      loadSourceExpenses(srcCurrentMonth);
+    });
+
+    document.querySelector('#src-month-nav a[data-action="current"]').addEventListener('click', (e) => {
+      e.preventDefault();
+      loadSourceExpenses(null);
+    });
+
     // Reload when convert checkbox changes
-    convertCheckbox.addEventListener('change', loadSourceExpenses);
+    convertCheckbox.addEventListener('change', () => {
+      loadSourceExpenses(srcCurrentMonthStr);
+    });
 
     // Initial load
     loadSourceExpenses();

@@ -1383,8 +1383,8 @@ def api_project_expenses(request):
         except UserPreferences.DoesNotExist:
             convert_to_usd = False
 
-    # Get all transactions with amount > 0
-    all_txs = Transaction.objects.filter(user=user, amount__gt=0)
+    # Get all transactions with amount > 0 AND with a project (filter out null projects)
+    all_txs = Transaction.objects.filter(user=user, amount__gt=0, project__isnull=False)
 
     if convert_to_usd:
         # Convert to USD and group by project
@@ -1393,7 +1393,7 @@ def api_project_expenses(request):
         transactions = all_txs.select_related('project')
 
         for tx in transactions:
-            proj_name = tx.project.name if tx.project else 'Sin proyecto'
+            proj_name = tx.project.name
             amount_usd = tx.to_usd()
 
             if amount_usd is None:
@@ -1417,17 +1417,14 @@ def api_project_expenses(request):
         # Group by project AND currency
         agg = (
             all_txs
-            .values(
-                'currency',
-                proj_name=Coalesce('project__name', Value('Sin proyecto'))
-            )
+            .values('currency', 'project__name')
             .annotate(total=Sum('amount'))
-            .order_by('proj_name', 'currency')
+            .order_by('project__name', 'currency')
         )
 
         proj_expenses = [
             {
-                'project': row['proj_name'],
+                'project': row['project__name'],
                 'currency': row['currency'],
                 'total': str(row['total'].quantize(Decimal('0.01'))) if row['total'] else '0.00',
             }
@@ -1445,8 +1442,34 @@ def api_project_expenses(request):
 @login_required
 @require_GET
 def api_source_expenses(request):
-    """API endpoint: Return total expenses by source (all time, no month filter)."""
+    """API endpoint: Return monthly expenses by source (with month navigation like categories)."""
     user = request.user
+
+    # Helper functions for month handling
+    def month_str(y, m):
+        return f"{y:04d}-{m:02d}"
+
+    def prev_month(y, m):
+        return (y - 1, 12) if m == 1 else (y, m - 1)
+
+    def next_month(y, m):
+        return (y + 1, 1) if m == 12 else (y, m + 1)
+
+    # Parse month parameter
+    today = datetime.date.today()
+    current_year, current_month = today.year, today.month
+    m_param = request.GET.get('m', '')
+    sel_year, sel_month = current_year, current_month
+
+    if m_param:
+        try:
+            parts = m_param.split('-')
+            y = int(parts[0])
+            m = int(parts[1])
+            if 1 <= m <= 12:
+                sel_year, sel_month = y, m
+        except Exception:
+            pass
 
     # Determine if we should convert to USD
     convert_usd_param = request.GET.get('convert_usd', '')
@@ -1460,17 +1483,27 @@ def api_source_expenses(request):
         except UserPreferences.DoesNotExist:
             convert_to_usd = False
 
-    # Get all transactions with amount > 0
-    all_txs = Transaction.objects.filter(user=user, amount__gt=0)
+    # Get transactions for selected month with source (filter out null sources)
+    first_day = datetime.date(sel_year, sel_month, 1)
+    ny, nm = next_month(sel_year, sel_month)
+    next_first = datetime.date(ny, nm, 1)
+
+    month_qs = Transaction.objects.filter(
+        user=user,
+        date__gte=first_day,
+        date__lt=next_first,
+        amount__gt=0,
+        source__isnull=False,
+    )
 
     if convert_to_usd:
         # Convert to USD and group by source
         source_totals = {}
         missing_rates_count = 0
-        transactions = all_txs.select_related('source')
+        transactions = month_qs.select_related('source')
 
         for tx in transactions:
-            src_name = tx.source.name if tx.source else 'Sin origen'
+            src_name = tx.source.name
             amount_usd = tx.to_usd()
 
             if amount_usd is None:
@@ -1493,18 +1526,15 @@ def api_source_expenses(request):
     else:
         # Group by source AND currency
         agg = (
-            all_txs
-            .values(
-                'currency',
-                src_name=Coalesce('source__name', Value('Sin origen'))
-            )
+            month_qs
+            .values('currency', 'source__name')
             .annotate(total=Sum('amount'))
-            .order_by('src_name', 'currency')
+            .order_by('source__name', 'currency')
         )
 
         src_expenses = [
             {
-                'source': row['src_name'],
+                'source': row['source__name'],
                 'currency': row['currency'],
                 'total': str(row['total'].quantize(Decimal('0.01'))) if row['total'] else '0.00',
             }
@@ -1512,8 +1542,13 @@ def api_source_expenses(request):
         ]
         missing_rates = 0
 
+    py, pm = prev_month(sel_year, sel_month)
+
     return JsonResponse({
         'src_expenses': src_expenses,
+        'selected_month_str': month_str(sel_year, sel_month),
+        'm_current': month_str(current_year, current_month),
+        'm_prev': month_str(py, pm),
         'convert_to_usd': convert_to_usd,
         'missing_rates': missing_rates,
     })
