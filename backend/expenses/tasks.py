@@ -213,14 +213,35 @@ def sync_splitwise_for_user(user_id):
                 else:
                     updated = False
                     changes = []
-                    if tx.amount != amount:
-                        tx.amount = amount; updated = True; changes.append(f"amount: {tx.amount} -> {amount}")
+
+                    # Compare amount (normalize Decimals to 2 decimal places)
+                    if tx.amount.quantize(Decimal('0.01')) != amount.quantize(Decimal('0.01')):
+                        old_amount = tx.amount
+                        tx.amount = amount
+                        updated = True
+                        changes.append(f"amount: {old_amount} -> {amount}")
+
+                    # Compare description
                     if tx.description != description:
-                        tx.description = description; updated = True; changes.append(f"description: {tx.description} -> {description}")
-                    if tx.source != source_obj:
-                        tx.source = source_obj; updated = True; changes.append(f"source: {tx.source} -> {source_obj}")
+                        old_desc = tx.description
+                        tx.description = description
+                        updated = True
+                        changes.append(f"description: {old_desc} -> {description}")
+
+                    # Compare source by ID, not object identity
+                    if tx.source_id != source_obj.id:
+                        old_source = tx.source
+                        tx.source = source_obj
+                        updated = True
+                        changes.append(f"source: {old_source} -> {source_obj}")
+
+                    # Compare currency
                     if tx.currency != currency:
-                        tx.currency = currency; updated = True; changes.append(f"currency: {tx.currency} -> {currency}")
+                        old_currency = tx.currency
+                        tx.currency = currency
+                        updated = True
+                        changes.append(f"currency: {old_currency} -> {currency}")
+
                     if updated:
                         transactions_updated += 1
                         tx.save()
