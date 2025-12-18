@@ -821,7 +821,138 @@ class BalanceDeleteView(OwnerDeleteView):
 # Transaction views
 class TransactionListView(OwnerListView):
     model = Transaction
-    template_name = "manage/list.html"
+    template_name = "manage/transactions_list.html"
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related(
+            'category', 'source', 'project', 'payee'
+        ).order_by('-date', '-id')
+
+        # Apply filters from query parameters
+        category = self.request.GET.get('category')
+        if category:
+            qs = qs.filter(category__name=category)
+
+        source = self.request.GET.get('source')
+        if source:
+            qs = qs.filter(source__name=source)
+
+        project = self.request.GET.get('project')
+        if project:
+            qs = qs.filter(project__name=project)
+
+        currency = self.request.GET.get('currency')
+        if currency:
+            qs = qs.filter(currency=currency)
+
+        # Date range filtering
+        date_from = self.request.GET.get('date_from')
+        if date_from:
+            try:
+                qs = qs.filter(date__gte=date_from)
+            except (ValueError, TypeError):
+                pass
+
+        date_to = self.request.GET.get('date_to')
+        if date_to:
+            try:
+                qs = qs.filter(date__lte=date_to)
+            except (ValueError, TypeError):
+                pass
+
+        # Search in description
+        search = self.request.GET.get('search')
+        if search:
+            qs = qs.filter(description__icontains=search)
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # Get all categories, sources, projects for filters
+        user = self.request.user
+        ctx['categories'] = Category.objects.filter(user=user).order_by('name')
+        ctx['sources'] = Source.objects.filter(user=user).order_by('name')
+        ctx['projects'] = Project.objects.filter(user=user).order_by('name')
+
+        # Get distinct currencies
+        ctx['currencies'] = (
+            Transaction.objects.filter(user=user)
+            .values_list('currency', flat=True)
+            .distinct()
+            .order_by('currency')
+        )
+
+        # Pass current filter values
+        ctx['current_filters'] = {
+            'category': self.request.GET.get('category', ''),
+            'source': self.request.GET.get('source', ''),
+            'project': self.request.GET.get('project', ''),
+            'currency': self.request.GET.get('currency', ''),
+            'date_from': self.request.GET.get('date_from', ''),
+            'date_to': self.request.GET.get('date_to', ''),
+            'search': self.request.GET.get('search', ''),
+        }
+
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        """Handle transaction updates and deletions via AJAX"""
+        action = request.POST.get('action')
+        tx_id = request.POST.get('tx_id')
+
+        if not tx_id:
+            return JsonResponse({'success': False, 'errors': ['Missing transaction ID']}, status=400)
+
+        try:
+            tx = Transaction.objects.get(id=tx_id, user=request.user)
+        except Transaction.DoesNotExist:
+            return JsonResponse({'success': False, 'errors': ['Transaction not found']}, status=404)
+
+        if action == 'delete_tx':
+            tx.delete()
+            return JsonResponse({'success': True, 'message': 'Transaction deleted'})
+
+        elif action == 'update_tx':
+            # Update category
+            category_id = request.POST.get('category_id')
+            if category_id:
+                try:
+                    tx.category = Category.objects.get(id=category_id, user=request.user)
+                except Category.DoesNotExist:
+                    return JsonResponse({'success': False, 'errors': ['Invalid category']}, status=400)
+            else:
+                tx.category = None
+
+            # Update source
+            source_id = request.POST.get('source_id')
+            if source_id:
+                try:
+                    tx.source = Source.objects.get(id=source_id, user=request.user)
+                except Source.DoesNotExist:
+                    return JsonResponse({'success': False, 'errors': ['Invalid source']}, status=400)
+            else:
+                tx.source = None
+
+            # Update project
+            project_id = request.POST.get('project_id')
+            if project_id:
+                try:
+                    tx.project = Project.objects.get(id=project_id, user=request.user)
+                except Project.DoesNotExist:
+                    return JsonResponse({'success': False, 'errors': ['Invalid project']}, status=400)
+            else:
+                tx.project = None
+
+            # Update comments
+            tx.comments = request.POST.get('comments', '')
+
+            tx.save()
+            return JsonResponse({'success': True, 'message': 'Transaction updated'})
+
+        return JsonResponse({'success': False, 'errors': ['Invalid action']}, status=400)
 
 
 class TransactionCreateView(OwnerCreateView):

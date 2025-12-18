@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Transacciones{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'profile' %}">← Volver al perfil</a></p>
+<h1>Transacciones</h1>
+
+<!-- Filters Section -->
+<section style="margin:1rem 0;padding:0.75rem;border:1px solid var(--accent);background:var(--panel);">
+  <h2 style="margin-top:0">Filtros</h2>
+  <form method="get" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.75rem;">
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Buscar</label>
+      <input type="text" name="search" value="{{ current_filters.search }}" placeholder="Descripción..." style="width:100%;padding:0.45rem 0.55rem;">
+    </div>
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Categoría</label>
+      <select name="category" style="width:100%;padding:0.45rem 0.55rem;">
+        <option value="">Todas</option>
+        {% for cat in categories %}
+          <option value="{{ cat.name }}" {% if current_filters.category == cat.name %}selected{% endif %}>{{ cat.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Origen</label>
+      <select name="source" style="width:100%;padding:0.45rem 0.55rem;">
+        <option value="">Todos</option>
+        {% for src in sources %}
+          <option value="{{ src.name }}" {% if current_filters.source == src.name %}selected{% endif %}>{{ src.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Proyecto</label>
+      <select name="project" style="width:100%;padding:0.45rem 0.55rem;">
+        <option value="">Todos</option>
+        {% for proj in projects %}
+          <option value="{{ proj.name }}" {% if current_filters.project == proj.name %}selected{% endif %}>{{ proj.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Moneda</label>
+      <select name="currency" style="width:100%;padding:0.45rem 0.55rem;">
+        <option value="">Todas</option>
+        {% for curr in currencies %}
+          <option value="{{ curr }}" {% if current_filters.currency == curr %}selected{% endif %}>{{ curr }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Desde</label>
+      <input type="date" name="date_from" value="{{ current_filters.date_from }}" style="width:100%;padding:0.45rem 0.55rem;">
+    </div>
+    <div>
+      <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Hasta</label>
+      <input type="date" name="date_to" value="{{ current_filters.date_to }}" style="width:100%;padding:0.45rem 0.55rem;">
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:0.5rem;">
+      <button type="submit">Filtrar</button>
+      <a href="{% url 'expenses:manage_transactions' %}" style="padding:0.5rem 1rem;text-decoration:none;background:#6b7280;color:white;border-radius:3px;">Limpiar</a>
+    </div>
+  </form>
+  {% if page_obj %}
+    <p style="margin-top:0.75rem;margin-bottom:0;color:var(--muted);">Total: {{ page_obj.paginator.count }} transacciones</p>
+  {% endif %}
+</section>
+
+<!-- Transactions List -->
+<section style="margin:1rem 0;padding:0.75rem;border:1px solid var(--accent);background:var(--panel);">
+  <h2 style="margin-top:0">Lista de Transacciones</h2>
+  {% if page_obj and page_obj.object_list %}
+    <p style="margin-top:0;color:var(--muted);">Mostrando {{ page_obj.object_list|length }} de {{ page_obj.paginator.count }}.</p>
+    <div style="display:grid;grid-template-columns:1fr;gap:0.75rem;">
+      {% for tx in page_obj %}
+        <form id="tx-{{ tx.id }}" action="" method="post" style="padding:0.6rem;border:1px solid var(--border);background:#fff;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_tx">
+          <input type="hidden" name="tx_id" value="{{ tx.id }}">
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:0.5rem;align-items:start;">
+            <!-- Transaction Info -->
+            <div>
+              <strong>{{ tx.description }}</strong>
+              <div style="font-size:0.9rem;color:var(--muted);margin-top:0.25rem;">
+                {{ tx.date }} · {{ tx.currency }} {{ tx.amount }}
+                {% if tx.external_id %}<br>ID: {{ tx.external_id }}{% endif %}
+              </div>
+            </div>
+
+            <!-- Category -->
+            <div>
+              <label style="display:block;font-weight:600;margin-bottom:0.25rem;font-size:0.9rem;">Categoría</label>
+              <select name="category_id" style="width:100%;padding:0.35rem 0.45rem;font-size:0.9rem;">
+                <option value="">Sin categoría</option>
+                {% for cat in categories %}
+                  <option value="{{ cat.id }}" {% if tx.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Source -->
+            <div>
+              <label style="display:block;font-weight:600;margin-bottom:0.25rem;font-size:0.9rem;">Origen</label>
+              <select name="source_id" style="width:100%;padding:0.35rem 0.45rem;font-size:0.9rem;">
+                <option value="">Sin origen</option>
+                {% for src in sources %}
+                  <option value="{{ src.id }}" {% if tx.source_id == src.id %}selected{% endif %}>{{ src.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Project -->
+            <div>
+              <label style="display:block;font-weight:600;margin-bottom:0.25rem;font-size:0.9rem;">Proyecto</label>
+              <select name="project_id" style="width:100%;padding:0.35rem 0.45rem;font-size:0.9rem;">
+                <option value="">Sin proyecto</option>
+                {% for proj in projects %}
+                  <option value="{{ proj.id }}" {% if tx.project_id == proj.id %}selected{% endif %}>{{ proj.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Comments Row -->
+          <div style="margin-top:0.5rem;display:grid;grid-template-columns:1fr auto;gap:0.5rem;align-items:end;">
+            <div>
+              <label style="display:block;font-weight:600;margin-bottom:0.25rem;font-size:0.9rem;">Comentario</label>
+              <textarea name="comments" rows="2" style="width:100%;padding:0.35rem 0.45rem;font-size:0.9rem;">{{ tx.comments }}</textarea>
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+              <button type="submit" style="white-space:nowrap;">Guardar</button>
+              <button type="button" class="delete-btn" data-tx-id="{{ tx.id }}" style="background:#dc2626;color:white;border:1px solid #b91c1c;white-space:nowrap;">Eliminar</button>
+            </div>
+          </div>
+        </form>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_previous or page_obj.has_next %}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border);">
+        <div>
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if current_filters.search %}&search={{ current_filters.search }}{% endif %}{% if current_filters.category %}&category={{ current_filters.category }}{% endif %}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.project %}&project={{ current_filters.project }}{% endif %}{% if current_filters.currency %}&currency={{ current_filters.currency }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}">« Anterior</a>
+          {% endif %}
+        </div>
+        <div>
+          Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </div>
+        <div>
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if current_filters.search %}&search={{ current_filters.search }}{% endif %}{% if current_filters.category %}&category={{ current_filters.category }}{% endif %}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.project %}&project={{ current_filters.project }}{% endif %}{% if current_filters.currency %}&currency={{ current_filters.currency }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}">Siguiente »</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <p style="margin:0">No se encontraron transacciones.</p>
+  {% endif %}
+</section>
+
+<script src="{% static 'expenses/categorize-autosave.js' %}" defer></script>
+<style>
+/* Auto-save status indicators */
+.save-status {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.5rem;
+  border-radius: 3px;
+  transition: opacity 0.3s ease;
+  display: inline-block;
+}
+
+.save-status-idle { opacity: 0; }
+.save-status-typing { color: #6b7280; opacity: 0.7; }
+.save-status-saving { color: #3b82f6; background-color: #dbeafe; opacity: 1; }
+.save-status-success { color: #059669; background-color: #d1fae5; opacity: 1; }
+.save-status-error { color: #dc2626; background-color: #fee2e2; opacity: 1; font-weight: 500; }
+
+/* Progressive enhancement: hide save buttons when JS loads */
+body.js-loaded form[id^="tx-"] button[type="submit"] {
+  display: none !important;
+}
+
+/* Delete button hover effect */
+.delete-btn:hover {
+  background: #b91c1c !important;
+}
+</style>
+
+<script>
+// Mark body as JS-loaded for progressive enhancement
+document.body.classList.add('js-loaded');
+
+// Handle delete buttons
+document.addEventListener('DOMContentLoaded', function() {
+  // Get CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // Add click handlers to all delete buttons
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', async function() {
+      const txId = this.dataset.txId;
+      const form = this.closest('form');
+      const txDescription = form.querySelector('strong').textContent;
+
+      // Confirm deletion
+      if (!confirm(`¿Estás seguro de eliminar la transacción "${txDescription}"?`)) {
+        return;
+      }
+
+      // Disable button during deletion
+      this.disabled = true;
+      this.textContent = 'Eliminando...';
+
+      try {
+        const formData = new FormData();
+        formData.append('action', 'delete_tx');
+        formData.append('tx_id', txId);
+
+        const response = await fetch(window.location.pathname + window.location.search, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrftoken
+          },
+          credentials: 'same-origin'
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Remove the form from the DOM with animation
+          form.style.transition = 'opacity 0.3s ease';
+          form.style.opacity = '0';
+          setTimeout(() => {
+            form.remove();
+
+            // Check if there are no more transactions
+            const remainingForms = document.querySelectorAll('form[id^="tx-"]');
+            if (remainingForms.length === 0) {
+              location.reload(); // Reload to show "no transactions" message
+            }
+          }, 300);
+        } else {
+          const errorMsg = data.errors ? data.errors.join(', ') : 'Error al eliminar';
+          alert('Error: ' + errorMsg);
+          this.disabled = false;
+          this.textContent = 'Eliminar';
+        }
+      } catch (error) {
+        console.error('Error deleting transaction:', error);
+        alert('Error de red al eliminar. Reintentá.');
+        this.disabled = false;
+        this.textContent = 'Eliminar';
+      }
+    });
+  });
+});
+</script>
+{% endblock %}
