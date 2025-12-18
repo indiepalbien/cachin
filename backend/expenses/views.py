@@ -1106,8 +1106,8 @@ def api_category_expenses(request):
     agg = (
         month_qs
         .values(
-            cat_name=Coalesce('category__name', Value('Sin categoría')),
-            'currency'
+            'currency',
+            cat_name=Coalesce('category__name', Value('Sin categoría'))
         )
         .annotate(total=Sum('amount'))
         .order_by('cat_name', 'currency')
