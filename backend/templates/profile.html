@@ -213,6 +213,22 @@
     </div>
   </section>
 
+  <!-- Gastos por proyecto (total, sin filtro de mes) -->
+  <section id="project-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
+    <h2 style="margin:0 0 .5rem 0">Gastos por proyecto (Total)</h2>
+    <div id="proj-expenses-content">
+      <p style="text-align:center;color:#999">Cargando gastos...</p>
+    </div>
+  </section>
+
+  <!-- Gastos por origen (total, sin filtro de mes) -->
+  <section id="source-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
+    <h2 style="margin:0 0 .5rem 0">Gastos por origen (Total)</h2>
+    <div id="src-expenses-content">
+      <p style="text-align:center;color:#999">Cargando gastos...</p>
+    </div>
+  </section>
+
   <script>
   (function() {
     let currentMonth = null;
@@ -382,6 +398,136 @@
 
     // Initial load
     loadCategoryExpenses();
+  })();
+  </script>
+
+  <script>
+  // Project expenses (all time, no month filter)
+  (async function() {
+    const content = document.getElementById('proj-expenses-content');
+    const convertCheckbox = document.getElementById('convert-to-usd');
+
+    async function loadProjectExpenses() {
+      try {
+        const convertParam = convertCheckbox.checked ? 'true' : 'false';
+        const response = await fetch(`/expenses/api/project-expenses/?convert_usd=${convertParam}`);
+        const data = await response.json();
+
+        // Build warning message if missing rates
+        let warningHtml = '';
+        if (data.convert_to_usd && data.missing_rates > 0) {
+          warningHtml = `<div style="background:#fff4e5;border:1px solid #ffb74d;padding:0.5rem;margin-bottom:0.5rem;border-radius:4px;font-size:0.9rem">
+            ⚠️ <strong>${data.missing_rates} transacciones</strong> no tienen tasa de cambio y no están incluidas.
+          </div>`;
+        }
+
+        // Render table
+        if (data.proj_expenses && data.proj_expenses.length > 0) {
+          let html = warningHtml;
+          html += '<table style="width:100%;border-collapse:collapse"><thead><tr>';
+          html += '<th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Proyecto</th>';
+
+          if (!data.convert_to_usd) {
+            html += '<th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>';
+          }
+
+          html += '<th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">';
+          html += data.convert_to_usd ? 'Total (USD)' : 'Total';
+          html += '</th></tr></thead><tbody>';
+
+          data.proj_expenses.forEach(row => {
+            html += '<tr><td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">' + row.project + '</td>';
+
+            if (!data.convert_to_usd) {
+              html += '<td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">' + row.currency + '</td>';
+            }
+
+            html += '<td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">';
+            html += data.convert_to_usd ? '$ ' + row.total : row.total;
+            html += '</td></tr>';
+          });
+
+          html += '</tbody></table>';
+          content.innerHTML = html;
+        } else {
+          content.innerHTML = warningHtml + '<p style="padding:.3rem 0">Sin gastos registrados.</p>';
+        }
+      } catch (error) {
+        console.error('Error loading project expenses:', error);
+        content.innerHTML = '<p style="color:#d00">Error al cargar gastos. Refresca la página.</p>';
+      }
+    }
+
+    // Reload when convert checkbox changes
+    convertCheckbox.addEventListener('change', loadProjectExpenses);
+
+    // Initial load
+    loadProjectExpenses();
+  })();
+  </script>
+
+  <script>
+  // Source expenses (all time, no month filter)
+  (async function() {
+    const content = document.getElementById('src-expenses-content');
+    const convertCheckbox = document.getElementById('convert-to-usd');
+
+    async function loadSourceExpenses() {
+      try {
+        const convertParam = convertCheckbox.checked ? 'true' : 'false';
+        const response = await fetch(`/expenses/api/source-expenses/?convert_usd=${convertParam}`);
+        const data = await response.json();
+
+        // Build warning message if missing rates
+        let warningHtml = '';
+        if (data.convert_to_usd && data.missing_rates > 0) {
+          warningHtml = `<div style="background:#fff4e5;border:1px solid #ffb74d;padding:0.5rem;margin-bottom:0.5rem;border-radius:4px;font-size:0.9rem">
+            ⚠️ <strong>${data.missing_rates} transacciones</strong> no tienen tasa de cambio y no están incluidas.
+          </div>`;
+        }
+
+        // Render table
+        if (data.src_expenses && data.src_expenses.length > 0) {
+          let html = warningHtml;
+          html += '<table style="width:100%;border-collapse:collapse"><thead><tr>';
+          html += '<th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Origen</th>';
+
+          if (!data.convert_to_usd) {
+            html += '<th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>';
+          }
+
+          html += '<th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">';
+          html += data.convert_to_usd ? 'Total (USD)' : 'Total';
+          html += '</th></tr></thead><tbody>';
+
+          data.src_expenses.forEach(row => {
+            html += '<tr><td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">' + row.source + '</td>';
+
+            if (!data.convert_to_usd) {
+              html += '<td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">' + row.currency + '</td>';
+            }
+
+            html += '<td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">';
+            html += data.convert_to_usd ? '$ ' + row.total : row.total;
+            html += '</td></tr>';
+          });
+
+          html += '</tbody></table>';
+          content.innerHTML = html;
+        } else {
+          content.innerHTML = warningHtml + '<p style="padding:.3rem 0">Sin gastos registrados.</p>';
+        }
+      } catch (error) {
+        console.error('Error loading source expenses:', error);
+        content.innerHTML = '<p style="color:#d00">Error al cargar gastos. Refresca la página.</p>';
+      }
+    }
+
+    // Reload when convert checkbox changes
+    convertCheckbox.addEventListener('change', loadSourceExpenses);
+
+    // Initial load
+    loadSourceExpenses();
   })();
   </script>
 

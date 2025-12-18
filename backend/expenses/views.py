@@ -1366,6 +1366,160 @@ def api_category_expenses(request):
 
 
 @login_required
+@require_GET
+def api_project_expenses(request):
+    """API endpoint: Return total expenses by project (all time, no month filter)."""
+    user = request.user
+
+    # Determine if we should convert to USD
+    convert_usd_param = request.GET.get('convert_usd', '')
+    if convert_usd_param:
+        convert_to_usd = convert_usd_param == 'true'
+    else:
+        # Get user preference (default to False)
+        try:
+            prefs = user.preferences
+            convert_to_usd = prefs.convert_expenses_to_usd
+        except UserPreferences.DoesNotExist:
+            convert_to_usd = False
+
+    # Get all transactions with amount > 0
+    all_txs = Transaction.objects.filter(user=user, amount__gt=0)
+
+    if convert_to_usd:
+        # Convert to USD and group by project
+        project_totals = {}
+        missing_rates_count = 0
+        transactions = all_txs.select_related('project')
+
+        for tx in transactions:
+            proj_name = tx.project.name if tx.project else 'Sin proyecto'
+            amount_usd = tx.to_usd()
+
+            if amount_usd is None:
+                missing_rates_count += 1
+                continue
+
+            if proj_name not in project_totals:
+                project_totals[proj_name] = Decimal('0')
+            project_totals[proj_name] += amount_usd
+
+        proj_expenses = [
+            {
+                'project': proj_name,
+                'currency': 'USD',
+                'total': str(total.quantize(Decimal('0.01'))),
+            }
+            for proj_name, total in sorted(project_totals.items(), key=lambda x: x[1], reverse=True)
+        ]
+        missing_rates = missing_rates_count
+    else:
+        # Group by project AND currency
+        agg = (
+            all_txs
+            .values(
+                'currency',
+                proj_name=Coalesce('project__name', Value('Sin proyecto'))
+            )
+            .annotate(total=Sum('amount'))
+            .order_by('proj_name', 'currency')
+        )
+
+        proj_expenses = [
+            {
+                'project': row['proj_name'],
+                'currency': row['currency'],
+                'total': str(row['total'].quantize(Decimal('0.01'))) if row['total'] else '0.00',
+            }
+            for row in agg
+        ]
+        missing_rates = 0
+
+    return JsonResponse({
+        'proj_expenses': proj_expenses,
+        'convert_to_usd': convert_to_usd,
+        'missing_rates': missing_rates,
+    })
+
+
+@login_required
+@require_GET
+def api_source_expenses(request):
+    """API endpoint: Return total expenses by source (all time, no month filter)."""
+    user = request.user
+
+    # Determine if we should convert to USD
+    convert_usd_param = request.GET.get('convert_usd', '')
+    if convert_usd_param:
+        convert_to_usd = convert_usd_param == 'true'
+    else:
+        # Get user preference (default to False)
+        try:
+            prefs = user.preferences
+            convert_to_usd = prefs.convert_expenses_to_usd
+        except UserPreferences.DoesNotExist:
+            convert_to_usd = False
+
+    # Get all transactions with amount > 0
+    all_txs = Transaction.objects.filter(user=user, amount__gt=0)
+
+    if convert_to_usd:
+        # Convert to USD and group by source
+        source_totals = {}
+        missing_rates_count = 0
+        transactions = all_txs.select_related('source')
+
+        for tx in transactions:
+            src_name = tx.source.name if tx.source else 'Sin origen'
+            amount_usd = tx.to_usd()
+
+            if amount_usd is None:
+                missing_rates_count += 1
+                continue
+
+            if src_name not in source_totals:
+                source_totals[src_name] = Decimal('0')
+            source_totals[src_name] += amount_usd
+
+        src_expenses = [
+            {
+                'source': src_name,
+                'currency': 'USD',
+                'total': str(total.quantize(Decimal('0.01'))),
+            }
+            for src_name, total in sorted(source_totals.items(), key=lambda x: x[1], reverse=True)
+        ]
+        missing_rates = missing_rates_count
+    else:
+        # Group by source AND currency
+        agg = (
+            all_txs
+            .values(
+                'currency',
+                src_name=Coalesce('source__name', Value('Sin origen'))
+            )
+            .annotate(total=Sum('amount'))
+            .order_by('src_name', 'currency')
+        )
+
+        src_expenses = [
+            {
+                'source': row['src_name'],
+                'currency': row['currency'],
+                'total': str(row['total'].quantize(Decimal('0.01'))) if row['total'] else '0.00',
+            }
+            for row in agg
+        ]
+        missing_rates = 0
+
+    return JsonResponse({
+        'src_expenses': src_expenses,
+        'convert_to_usd': convert_to_usd,
+        'missing_rates': missing_rates,
+    })
+
+
+@login_required
 @require_http_methods(["POST"])
 def update_forwarding_email(request):
     """Update user's forwarding email address"""
