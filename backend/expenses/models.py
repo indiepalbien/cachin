@@ -255,6 +255,24 @@ class SplitwiseAccount(models.Model):
         return f"SplitwiseAccount({self.user_id})"
 
 
+class UserPreferences(models.Model):
+    """User preferences for the expense tracking app."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='preferences')
+    convert_expenses_to_usd = models.BooleanField(
+        default=False,
+        help_text="Convert category expenses to USD in reports"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "User Preferences"
+        verbose_name_plural = "User Preferences"
+
+    def __str__(self):
+        return f"Preferences for {self.user.username}"
+
+
 class CategorizationRule(models.Model):
     """
     Smart rule-based categorization system.

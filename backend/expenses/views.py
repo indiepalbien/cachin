@@ -15,7 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from urllib.parse import quote_plus
-from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate
+from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate, UserPreferences
 from . import forms
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.core.validators import validate_email
@@ -1090,6 +1090,19 @@ def api_category_expenses(request):
         except Exception:
             pass
 
+    # Determine if we should convert to USD
+    # Check URL parameter first, then user preference
+    convert_usd_param = request.GET.get('convert_usd', '')
+    if convert_usd_param:
+        convert_to_usd = convert_usd_param == 'true'
+    else:
+        # Get user preference (default to False)
+        try:
+            prefs = user.preferences
+            convert_to_usd = prefs.convert_expenses_to_usd
+        except UserPreferences.DoesNotExist:
+            convert_to_usd = False
+
     # Get transactions for selected month
     first_day = datetime.date(sel_year, sel_month, 1)
     ny, nm = next_month(sel_year, sel_month)
@@ -1102,26 +1115,44 @@ def api_category_expenses(request):
         amount__gt=0,
     )
 
-    # Aggregate by category AND currency (no USD conversion)
-    agg = (
-        month_qs
-        .values(
-            'currency',
-            cat_name=Coalesce('category__name', Value('Sin categoría'))
+    if convert_to_usd:
+        # Aggregate by category only, sum amount_usd
+        agg = (
+            month_qs
+            .filter(amount_usd__isnull=False)
+            .values(cat_name=Coalesce('category__name', Value('Sin categoría')))
+            .annotate(total=Sum('amount_usd'))
+            .order_by('-total')
         )
-        .annotate(total=Sum('amount'))
-        .order_by('cat_name', 'currency')
-    )
 
-    # Format results
-    cat_expenses = [
-        {
-            'category': row['cat_name'],
-            'currency': row['currency'],
-            'total': str(row['total'].quantize(Decimal('0.01'))) if row['total'] else '0.00',
-        }
-        for row in agg
-    ]
+        cat_expenses = [
+            {
+                'category': row['cat_name'],
+                'currency': 'USD',
+                'total': str(row['total'].quantize(Decimal('0.01'))) if row['total'] else '0.00',
+            }
+            for row in agg
+        ]
+    else:
+        # Aggregate by category AND currency (no USD conversion)
+        agg = (
+            month_qs
+            .values(
+                'currency',
+                cat_name=Coalesce('category__name', Value('Sin categoría'))
+            )
+            .annotate(total=Sum('amount'))
+            .order_by('cat_name', 'currency')
+        )
+
+        cat_expenses = [
+            {
+                'category': row['cat_name'],
+                'currency': row['currency'],
+                'total': str(row['total'].quantize(Decimal('0.01'))) if row['total'] else '0.00',
+            }
+            for row in agg
+        ]
 
     py, pm = prev_month(sel_year, sel_month)
 
@@ -1130,6 +1161,7 @@ def api_category_expenses(request):
         'selected_month_str': month_str(sel_year, sel_month),
         'm_current': month_str(current_year, current_month),
         'm_prev': month_str(py, pm),
+        'convert_to_usd': convert_to_usd,
     })
 
 
@@ -1168,3 +1200,27 @@ def update_forwarding_email(request):
         messages.error(request, "Este email ya está en uso por otro usuario.")
 
     return redirect('expenses:manage_emails')
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_user_preference(request):
+    """Update user preference via AJAX"""
+    preference_key = request.POST.get('key')
+    preference_value = request.POST.get('value')
+
+    if preference_key == 'convert_expenses_to_usd':
+        # Get or create user preferences
+        prefs, created = UserPreferences.objects.get_or_create(user=request.user)
+        prefs.convert_expenses_to_usd = preference_value == 'true'
+        prefs.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Preference updated'
+        })
+
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid preference key'
+    }, status=400)

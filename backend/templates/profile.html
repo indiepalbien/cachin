@@ -139,7 +139,13 @@
 
   <!-- Gastos por categoría con carga independiente -->
   <section id="category-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
-    <h2 style="margin:0 0 .5rem 0">Gastos por categoría</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 .5rem 0">
+      <h2 style="margin:0">Gastos por categoría</h2>
+      <label style="font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:0.35rem">
+        <input type="checkbox" id="convert-to-usd" style="cursor:pointer">
+        <span>Convertir a USD</span>
+      </label>
+    </div>
     <div id="cat-month-nav" style="text-align:center;margin:.25rem 0 .5rem 0">
       <a href="#" data-action="prev">« Mes anterior</a>
       <span id="cat-month-label" style="margin:0 .75rem">Cargando...</span>
@@ -154,6 +160,24 @@
   (function() {
     let currentMonth = null;
     let currentMonthStr = null;
+    const convertCheckbox = document.getElementById('convert-to-usd');
+
+    // CSRF token helper
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
 
     async function loadCategoryExpenses(month) {
       const content = document.getElementById('cat-expenses-content');
@@ -175,6 +199,11 @@
         currentMonth = data.selected_month_str;
         currentMonthStr = data.m_current;
 
+        // Sync checkbox with backend preference (on first load)
+        if (convertCheckbox.checked !== data.convert_to_usd) {
+          convertCheckbox.checked = data.convert_to_usd;
+        }
+
         // Update month label
         label.textContent = `Mes ${data.selected_month_str}`;
 
@@ -190,15 +219,28 @@
         if (data.cat_expenses && data.cat_expenses.length > 0) {
           let html = '<table style="width:100%;border-collapse:collapse"><thead><tr>';
           html += '<th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Categoría</th>';
-          html += '<th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>';
-          html += '<th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">Total</th>';
+
+          // Show currency column only if not converting to USD
+          if (!data.convert_to_usd) {
+            html += '<th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>';
+          }
+
+          html += '<th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">';
+          html += data.convert_to_usd ? 'Total (USD)' : 'Total';
+          html += '</th>';
           html += '</tr></thead><tbody>';
 
           data.cat_expenses.forEach(row => {
             html += '<tr>';
             html += `<td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">${row.category}</td>`;
-            html += `<td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">${row.currency}</td>`;
-            html += `<td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">${row.total}</td>`;
+
+            if (!data.convert_to_usd) {
+              html += `<td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">${row.currency}</td>`;
+            }
+
+            html += `<td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">`;
+            html += data.convert_to_usd ? `$ ${row.total}` : row.total;
+            html += '</td>';
             html += '</tr>';
           });
 
@@ -212,6 +254,37 @@
         content.innerHTML = '<p style="color:#d00">Error al cargar gastos. Refresca la página.</p>';
       }
     }
+
+    // Handle checkbox change
+    convertCheckbox.addEventListener('change', async () => {
+      // Save preference to backend
+      try {
+        const formData = new FormData();
+        formData.append('key', 'convert_expenses_to_usd');
+        formData.append('value', convertCheckbox.checked ? 'true' : 'false');
+
+        const response = await fetch('/expenses/api/update-preference/', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': csrftoken
+          }
+        });
+
+        if (response.ok) {
+          // Reload with current month
+          loadCategoryExpenses(currentMonth);
+        } else {
+          console.error('Failed to save preference');
+          // Revert checkbox on error
+          convertCheckbox.checked = !convertCheckbox.checked;
+        }
+      } catch (error) {
+        console.error('Error saving preference:', error);
+        // Revert checkbox on error
+        convertCheckbox.checked = !convertCheckbox.checked;
+      }
+    });
 
     // Handle navigation clicks
     document.getElementById('cat-month-nav').addEventListener('click', (e) => {

@@ -63,4 +63,5 @@ urlpatterns = [
     # API endpoints for async loading
     path("api/recent-transactions/", views.api_recent_transactions, name="api_recent_transactions"),
     path("api/category-expenses/", views.api_category_expenses, name="api_category_expenses"),
+    path("api/update-preference/", views.update_user_preference, name="update_user_preference"),
 ]
