@@ -1085,8 +1085,8 @@ def bulk_confirm_view(request):
                 # Get or create source
                 source = None
                 if txn["source"]:
-                    # Parse source string (e.g., "itau:7654" -> "7654")
-                    source_name = txn["source"].split(":")[-1] if ":" in txn["source"] else txn["source"]
+                    # Keep full source name including bank prefix (e.g., "visa:3048")
+                    source_name = txn["source"]
                     source, _ = Source.objects.get_or_create(
                         user=user,
                         name=source_name
