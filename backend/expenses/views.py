@@ -1518,16 +1518,17 @@ def api_source_expenses(request):
     ny, nm = next_month(sel_year, sel_month)
     next_first = datetime.date(ny, nm, 1)
 
+    # Include all non-zero transactions (both positive and negative)
+    # We'll use absolute values when aggregating
     month_qs = Transaction.objects.filter(
         user=user,
         date__gte=first_day,
         date__lt=next_first,
-        amount__gt=0,
         source__isnull=False,
-    )
+    ).exclude(amount=0)
 
     if convert_to_usd:
-        # Convert to USD and group by source
+        # Convert to USD and group by source (using absolute values)
         source_totals = {}
         missing_rates_count = 0
         transactions = month_qs.select_related('source')
@@ -1542,7 +1543,8 @@ def api_source_expenses(request):
 
             if src_name not in source_totals:
                 source_totals[src_name] = Decimal('0')
-            source_totals[src_name] += amount_usd
+            # Use absolute value to include both income and expenses
+            source_totals[src_name] += abs(amount_usd)
 
         src_expenses = [
             {
@@ -1554,21 +1556,28 @@ def api_source_expenses(request):
         ]
         missing_rates = missing_rates_count
     else:
-        # Group by source AND currency
-        agg = (
-            month_qs
-            .values('currency', 'source__name')
-            .annotate(total=Sum('amount'))
-            .order_by('source__name', 'currency')
-        )
+        # Group by source AND currency (using absolute values)
+        source_currency_totals = {}
+        transactions = month_qs.select_related('source')
 
+        for tx in transactions:
+            src_name = tx.source.name
+            currency = tx.currency
+            key = (src_name, currency)
+
+            if key not in source_currency_totals:
+                source_currency_totals[key] = Decimal('0')
+            # Use absolute value to include both income and expenses
+            source_currency_totals[key] += abs(tx.amount)
+
+        # Sort by source name, then currency
         src_expenses = [
             {
-                'source': row['source__name'],
-                'currency': row['currency'],
-                'total': str(row['total'].quantize(Decimal('0.01'))) if row['total'] else '0.00',
+                'source': src_name,
+                'currency': currency,
+                'total': str(total.quantize(Decimal('0.01'))),
             }
-            for row in agg
+            for (src_name, currency), total in sorted(source_currency_totals.items())
         ]
         missing_rates = 0
 
