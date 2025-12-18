@@ -46,8 +46,9 @@
               <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Comentario</label>
               <textarea name="comments" rows="2" style="width:100%;padding:0.45rem 0.55rem;">{{ tx.comments }}</textarea>
             </div>
-            <div style="flex:0 0 auto;align-self:flex-end;">
+            <div style="flex:0 0 auto;align-self:flex-end;display:flex;gap:0.5rem;">
               <button type="submit">Guardar</button>
+              <button type="button" class="delete-btn" data-tx-id="{{ tx.id }}" style="background:#dc2626;color:white;border:1px solid #b91c1c;">Eliminar</button>
             </div>
           </div>
         </form>
@@ -95,10 +96,97 @@
 body.js-loaded form[id^="tx-"] button[type="submit"] {
   display: none !important;
 }
+
+/* Delete button hover effect */
+.delete-btn:hover {
+  background: #b91c1c !important;
+}
 </style>
 
 <script>
 // Mark body as JS-loaded for progressive enhancement
 document.body.classList.add('js-loaded');
+
+// Handle delete buttons
+document.addEventListener('DOMContentLoaded', function() {
+  // Get CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // Add click handlers to all delete buttons
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', async function() {
+      const txId = this.dataset.txId;
+      const form = this.closest('form');
+      const txDescription = form.querySelector('strong').textContent;
+
+      // Confirm deletion
+      if (!confirm(`¿Estás seguro de eliminar la transacción "${txDescription}"?`)) {
+        return;
+      }
+
+      // Disable button during deletion
+      this.disabled = true;
+      this.textContent = 'Eliminando...';
+
+      try {
+        const formData = new FormData();
+        formData.append('action', 'delete_tx');
+        formData.append('tx_id', txId);
+
+        const response = await fetch(window.location.pathname + window.location.search, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrftoken
+          },
+          credentials: 'same-origin'
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Remove the form from the DOM with animation
+          form.style.transition = 'opacity 0.3s ease';
+          form.style.opacity = '0';
+          setTimeout(() => {
+            form.remove();
+
+            // Check if there are no more transactions
+            const remainingForms = document.querySelectorAll('form[id^="tx-"]');
+            if (remainingForms.length === 0) {
+              const container = document.querySelector('section:last-of-type');
+              container.innerHTML = '<h2 style="margin-top:0">Transacciones</h2><p style="margin:0">No se encontraron transacciones con estos filtros.</p>';
+            }
+          }, 300);
+        } else {
+          const errorMsg = data.errors ? data.errors.join(', ') : 'Error al eliminar';
+          alert('Error: ' + errorMsg);
+          this.disabled = false;
+          this.textContent = 'Eliminar';
+        }
+      } catch (error) {
+        console.error('Error deleting transaction:', error);
+        alert('Error de red al eliminar. Reintentá.');
+        this.disabled = false;
+        this.textContent = 'Eliminar';
+      }
+    });
+  });
+});
 </script>
 {% endblock %}

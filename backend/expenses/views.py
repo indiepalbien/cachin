@@ -362,6 +362,49 @@ def edit_category_transactions(request):
             else:
                 return redirect("profile")
 
+        if action == "delete_tx":
+            tx_id = request.POST.get("tx_id")
+
+            if not tx_id:
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse({"success": False, "errors": ["ID de transacción requerido"]}, status=400)
+                messages.error(request, "ID de transacción requerido.")
+                return redirect("profile")
+
+            try:
+                tx = Transaction.objects.get(pk=tx_id, user=user)
+                tx_description = tx.description
+                tx.delete()
+
+                # AJAX response
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse({
+                        "success": True,
+                        "message": f"Transacción '{tx_description}' eliminada.",
+                        "tx_id": tx_id
+                    })
+
+                messages.success(request, f"Transacción '{tx_description}' eliminada.")
+            except Transaction.DoesNotExist:
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse({"success": False, "errors": ["Transacción no encontrada"]}, status=404)
+                messages.error(request, "Transacción no encontrada.")
+
+            # Redirect back with filters
+            category_name = request.GET.get('category', '')
+            currency = request.GET.get('currency', '')
+            month_param = request.GET.get('month', '')
+
+            if category_name:
+                params = f"?category={category_name}"
+                if currency:
+                    params += f"&currency={currency}"
+                if month_param:
+                    params += f"&month={month_param}"
+                return redirect(reverse("expenses:edit_category_transactions") + params)
+            else:
+                return redirect("profile")
+
         messages.error(request, "Acción no reconocida.")
         return redirect("profile")
 
@@ -508,6 +551,10 @@ class OwnerUpdateView(LoginRequiredMixin, OwnerRequiredMixin, UpdateView):
         plural = plural_map.get(model_name, model_name + "s")
         ctx["list_url"] = reverse(f"expenses:manage_{plural}")
         ctx["back_url"] = ctx["list_url"]
+        # Add delete URL for edit mode
+        if self.object and self.object.pk:
+            singular = model_name
+            ctx["delete_url"] = reverse(f"expenses:manage_{singular}_delete", kwargs={"pk": self.object.pk})
         return ctx
     def get_success_url(self):
         return getattr(self, "success_url", None) or self.request.POST.get("next") or self.request.GET.get("next") or self.get_context_data().get("list_url") or super().get_success_url()

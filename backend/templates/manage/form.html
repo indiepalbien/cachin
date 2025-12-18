@@ -4,13 +4,22 @@
 
 {% block content %}
   <p><a href="{{ back_url|default:'javascript:history.back()' }}">← Volver</a></p>
-  <h1>Crear / Editar {{ model_verbose_name }}</h1>
+  <h1>{% if object %}Editar{% else %}Crear{% endif %} {{ model_verbose_name }}</h1>
   <form method="post">
     {% csrf_token %}
     {% if back_url %}
       <input type="hidden" name="next" value="{{ back_url }}">
     {% endif %}
     {{ form.as_p }}
-    <button type="submit">Guardar</button>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+      <button type="submit">Guardar</button>
+      {% if delete_url %}
+        <a href="{{ delete_url }}"
+           style="background:#dc2626;color:white;border:1px solid #b91c1c;padding:0.45rem 0.75rem;text-decoration:none;border-radius:4px;display:inline-block;"
+           onclick="return confirm('¿Estás seguro de eliminar este {{ model_verbose_name }}?');">
+          Eliminar
+        </a>
+      {% endif %}
+    </div>
   </form>
 {% endblock %}
