@@ -3,12 +3,22 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 
-from .models import UserEmailConfig, Transaction
+from .models import UserEmailConfig, Transaction, UserProfile, Category, Project
+from .default_config import DEFAULT_CATEGORIES, DEFAULT_PROJECTS
 
 
 def _generate_alias_localpart() -> str:
     # 16 hex chars for readability
     return secrets.token_hex(8)
+
+
+@receiver(post_save, sender=get_user_model())
+def create_user_profile(sender, instance, created, **kwargs):
+    """Create UserProfile with default onboarding step when user is created."""
+    if not created:
+        return
+    if not UserProfile.objects.filter(user=instance).exists():
+        UserProfile.objects.create(user=instance, onboarding_step=1)
 
 
 @receiver(post_save, sender=get_user_model())
@@ -19,6 +29,30 @@ def create_user_email_config(sender, instance, created, **kwargs):
     if not UserEmailConfig.objects.filter(user=instance).exists():
         alias = _generate_alias_localpart()
         UserEmailConfig.objects.create(user=instance, alias_localpart=alias)
+
+
+@receiver(post_save, sender=get_user_model())
+def create_default_categories_and_projects(sender, instance, created, **kwargs):
+    """Create default categories and projects for new users."""
+    if not created:
+        return
+    
+    # Create default categories
+    for cat_data in DEFAULT_CATEGORIES:
+        Category.objects.create(
+            user=instance,
+            name=cat_data["name"],
+            counts_to_total=cat_data["counts_to_total"],
+            description=cat_data["description"]
+        )
+    
+    # Create default projects
+    for proj_data in DEFAULT_PROJECTS:
+        Project.objects.create(
+            user=instance,
+            name=proj_data["name"],
+            description=proj_data["description"]
+        )
 
 
 @receiver(post_save, sender=Transaction)

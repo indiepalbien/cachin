@@ -5,9 +5,34 @@ from django.conf import settings
 from decimal import Decimal
 
 
+class UserProfile(models.Model):
+    """Extended user profile to store additional user data."""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
+    onboarding_step = models.IntegerField(
+        default=1,
+        help_text="Current onboarding step (0 = completed, 1-5 = active steps)"
+    )
+    
+    def __str__(self):
+        return f"{self.user.username} - Step {self.onboarding_step}"
+    
+    @property
+    def onboarding_complete(self):
+        """Check if user has completed onboarding."""
+        return self.onboarding_step == 0
+
+
 class Category(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=150)
+    counts_to_total = models.BooleanField(
+        default=True,
+        help_text="Whether this category counts towards monthly totals"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Optional description explaining what this category is for"
+    )
 
     def __str__(self):
         return self.name
@@ -16,6 +41,10 @@ class Category(models.Model):
 class Project(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=150)
+    description = models.TextField(
+        blank=True,
+        help_text="Optional description of the project"
+    )
 
     def __str__(self):
         return self.name
@@ -81,6 +110,8 @@ class UserEmailConfig(models.Model):
         alias_localpart = models.CharField(max_length=64, unique=True)
         domain = models.CharField(max_length=255, default="cachinapp.com")
         full_address = models.EmailField(unique=True)
+        # User's personal email for forwarding
+        user_email = models.EmailField(blank=True, help_text="Email personal desde el cual reenviarás correos")
         # Optional per-user mailbox credentials (can be blank if using a shared ingest mailbox)
         mailbox_username = models.CharField(max_length=255, blank=True)
         mailbox_password = models.CharField(max_length=255, blank=True)

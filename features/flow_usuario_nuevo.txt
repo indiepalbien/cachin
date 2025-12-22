@@ -1,0 +1,62 @@
+
+
+Cuando un usuario nuevo se registra debería pasar de forma forzada por algunas pantallas "pre-seleccionadas" en orden.
+Habría un toggle en la configuración del usuario que arranca apagado y mientras este apagado, te redirige siempre
+a las mismas pantallas.
+
+Paso 1: Categorias
+
+todos los usuarios van a tener por defecto categorias creadas que pueden modificar
+
+* casa
+* transporte
+* salidas
+* entretenimiento
+* otros gastos
+* pago de tarjetas
+* ingresos
+
+la primera vez, los usarios deberán ver un boton que diga, estas son tus primeras categorias, puedes modificarlas o agregar nuevas.
+y una explicación de cara que sirve cada una
+
+en particular: pago de tarjetas se usa para no contar doble los gastos de la tarjeta y los gastos de pagar la tarjeta.
+
+NOTA APARTE: las categorias deberían tener un checkbox (para todos los usuarios) de si cuentan al total del mes o no (y en principio)
+la unica que no cuenta es pago de tarjetas
+
+una vez que el usuario hace click en "MIS CATEGORIAS ESTÄN LISTAS" lo redirigomos al paso 2 y de ahí en adelante,
+siempre lo diririgmos al paso (que le sigua o a la pantalla de inicio)
+
+
+Paso 2: Proyectos
+
+Capaz que cremos 1 proyecto por defecto que se llame "vacaciones de verano" y explicamos que sirven para agrupar gastos
+incluso cuando estan en distinas categorias
+
+Al final hay un boton que dice "Ya configure mis proyectos"
+
+Debería haber un cartel que explique que siempre se pueden volver a modificar los proyectos, las categorias, etc.
+
+Paso 3: 
+
+Configurar splitwise, se va a la página de splitwise, se de la opción de contar en el momento o volver más tarde con el boton,
+ "Ya configure split o volveré más tarde"
+
+Paso 4:
+
+ Configurar el mail:
+
+ Acá similar a split, explicamos al usuario como configurar todo y le damos la opción de hacerlo en el momento y marcarlo como hecho.
+
+
+Paso 5: 
+
+Termina el flow de onboarding y el usuario para ser redirigido siempre a la pantalla de incio.
+
+
+==== Detalles de implementación ====
+
+1. Tenemos que configurar los valores inciales de un usuario y eso estaría bueno que fue un archivo APARTE
+para que se facil d econfigurar 
+2. Pensando en los 5 pasos, tiene sentido que el campo de onbarding sea un int donde el numero representa el paso y 0
+es que ya termino el onbarding y la pantalla por defecto pasa a a ser el perfil.

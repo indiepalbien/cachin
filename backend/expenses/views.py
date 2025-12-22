@@ -15,7 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from urllib.parse import quote_plus
-from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate, UserPreferences
+from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate, UserProfile, UserPreferences
 from . import forms
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.core.validators import validate_email
@@ -30,6 +30,40 @@ from django.core.paginator import Paginator
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _get_onboarding_context(user):
+    """Helper to get onboarding context for templates."""
+    try:
+        profile = user.profile
+        return {
+            'is_onboarding': profile.onboarding_step > 0,
+            'onboarding_step': profile.onboarding_step,
+            'onboarding_total_steps': 5,
+        }
+    except UserProfile.DoesNotExist:
+        return {
+            'is_onboarding': False,
+            'onboarding_step': 0,
+            'onboarding_total_steps': 5,
+        }
+
+
+def _advance_onboarding(user):
+    """Helper to advance user to next onboarding step."""
+    try:
+        profile = user.profile
+        if profile.onboarding_step > 0 and profile.onboarding_step < 5:
+            profile.onboarding_step += 1
+            profile.save()
+            return profile.onboarding_step
+        elif profile.onboarding_step == 5:
+            profile.onboarding_step = 0
+            profile.save()
+            return 0
+    except UserProfile.DoesNotExist:
+        pass
+    return None
 
 
 def get_exchange_rate(user, source_currency, target_currency, date):
@@ -623,6 +657,19 @@ class OwnerDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
 class CategoryListView(OwnerListView):
     model = Category
     template_name = "manage/list.html"
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(_get_onboarding_context(self.request.user))
+        return ctx
+    
+    def post(self, request, *args, **kwargs):
+        """Handle onboarding confirmation."""
+        if request.POST.get('onboarding_confirm'):
+            _advance_onboarding(request.user)
+            messages.success(request, '¡Categorías configuradas! Ahora veamos los proyectos.')
+            return redirect('expenses:manage_projects')
+        return super().post(request, *args, **kwargs)
 
 
 class CategoryCreateView(OwnerCreateView):
@@ -649,6 +696,19 @@ class CategoryDeleteView(OwnerDeleteView):
 class ProjectListView(OwnerListView):
     model = Project
     template_name = "manage/list.html"
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(_get_onboarding_context(self.request.user))
+        return ctx
+    
+    def post(self, request, *args, **kwargs):
+        """Handle onboarding confirmation."""
+        if request.POST.get('onboarding_confirm'):
+            _advance_onboarding(request.user)
+            messages.success(request, '¡Proyectos configurados! Ahora configuremos Splitwise.')
+            return redirect('expenses:splitwise_status')
+        return super().post(request, *args, **kwargs)
 
 
 class ProjectCreateView(OwnerCreateView):
@@ -770,9 +830,30 @@ class EmailMessageListView(LoginRequiredMixin, ListView):
             ctx['header_note'] = f"Tu dirección de correo: {cfg.full_address}"
         else:
             ctx['header_note'] = "No tienes una dirección de correo configurada aún."
+        # Add onboarding context
+        ctx.update(_get_onboarding_context(self.request.user))
         # Pass email config to template for forwarding email form
         ctx['email_config'] = cfg
         return ctx
+    
+    def post(self, request, *args, **kwargs):
+        """Handle onboarding confirmation and email update."""
+        # Handle user email update
+        if request.POST.get('user_email'):
+            user_email = request.POST.get('user_email', '').strip()
+            cfg = UserEmailConfig.objects.filter(user=request.user).first()
+            if cfg:
+                cfg.user_email = user_email
+                cfg.save()
+                messages.success(request, f'✅ Email personal guardado: {user_email}')
+        
+        # Handle onboarding confirmation
+        if request.POST.get('onboarding_confirm'):
+            _advance_onboarding(request.user)
+            messages.success(request, '¡Ya casi terminamos! Un último paso.')
+            return redirect('profile')
+        
+        return redirect('expenses:manage_emails')
 
 
 class PendingTransactionListView(LoginRequiredMixin, ListView):
@@ -1007,8 +1088,18 @@ def landing(request):
 @login_required
 def profile(request):
     """Simple profile page showing username."""
-    # Provide user's existing options server-side so the profile quick-add doesn't depend on JS timing
     user = request.user
+    
+    # Handle onboarding completion
+    if request.method == 'POST' and request.POST.get('onboarding_complete'):
+        try:
+            profile_obj = user.profile
+            profile_obj.onboarding_step = 0
+            profile_obj.save()
+            messages.success(request, '¡Bienvenido! Tu cuenta está lista para usar.')
+        except UserProfile.DoesNotExist:
+            pass
+        return redirect('profile')
 
     # Get user preferences (create if doesn't exist)
     try:
@@ -1018,7 +1109,8 @@ def profile(request):
             user=user,
             convert_expenses_to_usd=False  # default
         )
-
+    
+    # Provide user's existing options server-side so the profile quick-add doesn't depend on JS timing
     categories = Category.objects.filter(user=user).order_by('name').values_list('name', flat=True)
     projects = Project.objects.filter(user=user).order_by('name').values_list('name', flat=True)
     payees = Payee.objects.filter(user=user).order_by('name').values_list('name', flat=True)
@@ -1045,6 +1137,14 @@ def profile(request):
         'tx_page': tx_page,
         'tx_paginator': paginator,
     }
+    context.update(_get_onboarding_context(user))
+    
+    # Get email config for onboarding step 4
+    try:
+        context['email_config'] = user.useremailconfig
+    except:
+        context['email_config'] = None
+    
     return render(request, 'profile.html', context)
 
 
@@ -1348,12 +1448,20 @@ def splitwise_callback(request):
 @login_required
 def splitwise_status(request):
     """Display Splitwise connection status and offer connect action."""
-    account = SplitwiseAccount.objects.filter(user=request.user).first()
+    user = request.user
+    
+    if request.method == 'POST' and request.POST.get('onboarding_confirm'):
+        _advance_onboarding(user)
+        messages.info(request, 'Ahora configuremos el correo electrónico.')
+        return redirect('profile')  # Will show email config in profile
+    
+    account = SplitwiseAccount.objects.filter(user=user).first()
     connected = bool(account and account.oauth_token and account.oauth_token_secret)
     context = {
         "account": account,
         "connected": connected,
     }
+    context.update(_get_onboarding_context(user))
     return render(request, "manage/splitwise.html", context)
 
 

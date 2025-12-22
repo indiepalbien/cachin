@@ -3,6 +3,29 @@
 {% block title %}Splitwise{% endblock %}
 
 {% block content %}
+  {% if is_onboarding and onboarding_step == 3 %}
+  <div class="onboarding-banner">
+    <div class="onboarding-progress">
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: 60%;"></div>
+      </div>
+      <p class="step-text">Paso 3 de 5</p>
+    </div>
+    
+    <div class="onboarding-message">
+      <h2>💰 Paso 3: Splitwise</h2>
+      <p>Splitwise es una app para dividir gastos con amigos, compañeros de casa o pareja. Si la usás, podés conectarla con Cachin para importar automáticamente tus gastos compartidos.</p>
+      <p><strong>Podés configurarlo ahora o hacerlo más tarde.</strong></p>
+      <p class="reminder">📝 No te preocupes, siempre podrás configurar o modificar esta integración desde tu perfil.</p>
+      <form method="post" style="margin-top: 1rem;">
+        {% csrf_token %}
+        <input type="hidden" name="onboarding_confirm" value="1">
+        <button type="submit" class="btn-secondary">Ya Configuré Split / Volveré Más Tarde →</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+  
   <p><a href="{% url 'expenses:manage_dashboard' %}">← Volver al panel</a></p>
   <h1>Splitwise</h1>
   {% if connected %}
@@ -24,4 +47,74 @@
   <div style="margin-top:1rem;">
     <a class="btn" href="{% url 'expenses:splitwise_connect' %}?next={{ request.get_full_path|urlencode }}" style="display:inline-block;padding:0.6rem 1rem;background:var(--accent);color:var(--bg);text-decoration:none;border-radius:4px;">Conectar con Splitwise</a>
   </div>
+  
+  <style>
+    .onboarding-banner {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .onboarding-progress {
+      margin-bottom: 1.5rem;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background-color: rgba(255,255,255,0.3);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background-color: white;
+      transition: width 0.3s ease;
+    }
+    
+    .step-text {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+    
+    .onboarding-message h2 {
+      margin: 0 0 1rem 0;
+      font-size: 1.8rem;
+    }
+    
+    .onboarding-message p {
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    
+    .reminder {
+      background-color: rgba(255,255,255,0.15);
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin: 1rem 0;
+    }
+    
+    .btn-secondary {
+      background-color: white;
+      color: #667eea;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+  </style>
 {% endblock %}

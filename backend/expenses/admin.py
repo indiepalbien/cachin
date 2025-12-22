@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
 	Category, Project, Payee, Source, Exchange, Balance, Transaction,
 	UserEmailConfig, UserEmailMessage, SplitwiseAccount, PendingTransaction,
-	DefaultExchangeRate, CategorizationRule,
+	DefaultExchangeRate, CategorizationRule, UserProfile,
 )
 
 # Register finance models
@@ -14,6 +14,13 @@ admin.site.register(Exchange)
 admin.site.register(Balance)
 admin.site.register(Transaction)
 admin.site.register(DefaultExchangeRate)
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+	list_display = ("user", "onboarding_step")
+	search_fields = ("user__username",)
+	list_filter = ("onboarding_step",)
 
 
 @admin.register(UserEmailConfig)

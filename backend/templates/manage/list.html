@@ -1,8 +1,94 @@
 {% extends 'base.html' %}
+{% load expense_filters %}
 
 {% block title %}List — Manage{% endblock %}
 
 {% block content %}
+  {% if is_onboarding %}
+  <div class="onboarding-banner">
+    <div class="onboarding-progress">
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: {{ onboarding_step|multiply:20 }}%;"></div>
+      </div>
+      <p class="step-text">Paso {{ onboarding_step }} de {{ onboarding_total_steps }}</p>
+    </div>
+    
+    {% if onboarding_step == 1 %}
+    <div class="onboarding-message">
+      <h2>🎉 ¡Bienvenido a Cachin!</h2>
+      <h3>Paso 1: Tus Primeras Categorías</h3>
+      <p>Hemos creado algunas categorías por defecto para que organices tus gastos. Puedes modificarlas o agregar nuevas haciendo clic en "Añadir nuevo" o "Editar".</p>
+      <div class="info-box">
+        <strong>💡 Nota importante:</strong> La categoría "Pago de tarjetas" no cuenta en el total mensual para evitar duplicar gastos.
+      </div>
+      <p class="reminder">📝 Recordá que siempre podrás volver a modificar tus categorías más adelante.</p>
+      <form method="post" style="margin-top: 1rem;">
+        {% csrf_token %}
+        <input type="hidden" name="onboarding_confirm" value="1">
+        <button type="submit" class="btn-primary">Mis Categorías Están Listas →</button>
+      </form>
+    </div>
+    {% elif onboarding_step == 2 %}
+    <div class="onboarding-message">
+      <h2>📁 Paso 2: Proyectos</h2>
+      <p>Los proyectos te permiten agrupar gastos incluso cuando están en distintas categorías. Por ejemplo, "Vacaciones de verano" podría incluir gastos de transporte, comidas, entretenimiento, etc.</p>
+      <p>Creamos un proyecto de ejemplo para que veas cómo funciona. Puedes editarlo, eliminarlo o crear nuevos proyectos.</p>
+      <p class="reminder">📝 Recordá que siempre podrás modificar tus proyectos más adelante.</p>
+      <form method="post" style="margin-top: 1rem;">
+        {% csrf_token %}
+        <input type="hidden" name="onboarding_confirm" value="1">
+        <button type="submit" class="btn-primary">Ya Configuré Mis Proyectos →</button>
+      </form>
+    </div>
+    {% elif onboarding_step == 4 %}
+    <div class="onboarding-message">
+      <h2>📧 Paso 4: Configurar Email</h2>
+      <p>Podés automatizar la captura de gastos reenviando los correos de tu banco a tu dirección única de Cachin.</p>
+      {% if email_config %}
+      <div class="email-highlight" style="background:rgba(255,255,255,0.2);padding:1.5rem;border-radius:8px;margin:1.5rem 0;border-left:4px solid white;">
+        <p style="margin:0 0 0.5rem 0;font-size:0.9rem;opacity:0.9;"><strong>Tu dirección para reenviar correos:</strong></p>
+        <p style="margin:0;font-size:1.3rem;font-family:monospace;word-break:break-all;background:rgba(0,0,0,0.2);padding:0.75rem;border-radius:4px;">{{ email_config.full_address }}</p>
+      </div>
+      
+      <form method="post" style="background:rgba(255,255,255,0.15);padding:1.5rem;border-radius:8px;margin:1.5rem 0;">
+        {% csrf_token %}
+        <label style="display:block;margin-bottom:0.5rem;font-weight:500;">
+          📬 Tu email personal (desde donde reenviarás correos):
+        </label>
+        <input type="email" name="user_email" value="{{ email_config.user_email }}" 
+               placeholder="tu.email@ejemplo.com" 
+               style="width:100%;padding:0.75rem;border:none;border-radius:4px;font-size:1rem;box-sizing:border-box;margin-bottom:0.5rem;">
+        <p style="margin:0.5rem 0 1rem 0;font-size:0.85rem;opacity:0.9;">
+          Este es el email desde el cual reenviarás los correos de tu banco. Solo los correos de este email serán procesados.
+        </p>
+        <button type="submit" style="background:white;color:#667eea;border:none;padding:0.5rem 1rem;border-radius:4px;font-weight:500;cursor:pointer;">
+          Guardar Email
+        </button>
+      </form>
+      
+      <div class="info-box">
+        <strong>¿Cómo funciona?</strong>
+        <ol style="margin:0.5rem 0 0 1.2rem;padding:0;line-height:1.8;">
+          <li>Cuando recibas un correo de tu banco con un gasto, reenvialo a esta dirección</li>
+          <li>Cachin lo procesará automáticamente y extraerá la información del gasto</li>
+          <li>Verás la transacción aparecer en tu lista de gastos</li>
+        </ol>
+      </div>
+      <p style="margin-top:1rem;font-size:0.9rem;opacity:0.9;">💡 <em>Podés copiar esta dirección y guardarla en tus contactos para usarla fácilmente.</em></p>
+      {% else %}
+      <p style="background:rgba(255,255,255,0.2);padding:1rem;border-radius:6px;">⚠️ <em>No se encontró tu configuración de email. Contactá a soporte.</em></p>
+      {% endif %}
+      <p class="reminder">📝 Esta opción siempre estará disponible en "Mis datos" → "Emails".</p>
+      <form method="post" style="margin-top: 1rem;">
+        {% csrf_token %}
+        <input type="hidden" name="onboarding_confirm" value="1">
+        <button type="submit" class="btn-primary">Ya Configuré el Mail / Volveré Más Tarde →</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+  
   <p><a href="{{ back_url|default:'javascript:history.back()' }}">← Volver</a></p>
   <h1>{{ model_verbose_name_plural|capfirst }}</h1>
   {% if header_note %}
@@ -64,4 +150,89 @@
       <li>No hay elementos.</li>
     {% endfor %}
   </ul>
+  
+  <style>
+    .onboarding-banner {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .onboarding-progress {
+      margin-bottom: 1.5rem;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background-color: rgba(255,255,255,0.3);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background-color: white;
+      transition: width 0.3s ease;
+    }
+    
+    .step-text {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+    
+    .onboarding-message h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.8rem;
+    }
+    
+    .onboarding-message h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1.3rem;
+      font-weight: normal;
+      opacity: 0.95;
+    }
+    
+    .onboarding-message p {
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    
+    .info-box {
+      background-color: rgba(255,255,255,0.2);
+      padding: 1rem;
+      border-radius: 6px;
+      margin: 1rem 0;
+      border-left: 4px solid white;
+    }
+    
+    .reminder {
+      background-color: rgba(255,255,255,0.15);
+      padding: 0.75rem;
+      border-radius: 4px;
+      margin: 1rem 0;
+    }
+    
+    .btn-primary {
+      background-color: white;
+      color: #667eea;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+  </style>
 {% endblock %}
