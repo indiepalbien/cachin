@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}App-Finanzas{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'expenses/style.css' %}">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   </head>
   <body>
     <header>
@@ -36,5 +37,21 @@
 
       {% block content %}{% endblock %}
     </main>
+
+    <script>
+      // Auto-fade success messages after 2 seconds
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        const target = evt.detail.target;
+        if (target && target.classList.contains('save-status')) {
+          const statusText = target.querySelector('.status-text');
+          if (statusText && statusText.textContent.includes('✓')) {
+            setTimeout(() => {
+              target.style.transition = 'opacity 0.5s ease';
+              target.style.opacity = '0';
+            }, 2000);
+          }
+        }
+      });
+    </script>
   </body>
 </html>

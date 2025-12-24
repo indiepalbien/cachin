@@ -5,6 +5,25 @@
 {% block content %}
   <p><a href="{% url 'profile' %}">← Volver</a></p>
   <h1>Gestionar datos</h1>
+
+  <section style="margin:2rem 0;padding:1rem;border:1px solid var(--accent);background:var(--panel);">
+    <h2 style="margin-top:0">Preferencias</h2>
+    <form hx-post="{% url 'expenses:update_user_preference' %}"
+          hx-target="#pref-msg"
+          hx-swap="innerHTML"
+          hx-trigger="change">
+      {% csrf_token %}
+      <input type="hidden" name="key" value="convert_expenses_to_usd">
+      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+        <input type="checkbox" name="value" value="true"
+               {% if user.preferences.convert_expenses_to_usd %}checked{% endif %}>
+        <span>Convertir gastos a USD en resumen</span>
+      </label>
+      <div id="pref-msg" style="margin-top:0.5rem;min-height:1.5rem"></div>
+    </form>
+  </section>
+
+  <h2>Recursos</h2>
   <ul>
     {% for name, url_name in resources %}
       <li><a href="{% url url_name %}">{{ name }}</a></li>

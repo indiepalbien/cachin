@@ -1,44 +1,13 @@
 {% extends 'base.html' %}
-{% load expense_filters %}
 
 {% block title %}Mi perfil — App-Finanzas{% endblock %}
 
 {% block content %}
 
-  {% if is_onboarding %}
-  <div class="onboarding-banner">
-    <div class="onboarding-progress">
-      <div class="progress-bar">
-        <div class="progress-fill" style="width: {{ onboarding_step|multiply:20 }}%;"></div>
-      </div>
-      <p class="step-text">Paso {{ onboarding_step }} de {{ onboarding_total_steps }}</p>
-    </div>
-    
-    {% if onboarding_step == 5 %}
-    <div class="onboarding-message">
-      <h2>🎉 ¡Todo Listo!</h2>
-      <p>Has completado la configuración inicial de tu cuenta. Ya podés empezar a:</p>
-      <ul style="margin: 1rem 0; line-height: 1.8;">
-        <li>✅ Agregar transacciones manualmente con el formulario abajo</li>
-        <li>✅ Importar transacciones copiando y pegando desde tu banco</li>
-        <li>✅ Organizar tus gastos con categorías y proyectos</li>
-        <li>✅ Ver reportes y análisis de tus finanzas</li>
-      </ul>
-      <p class="reminder">📝 Recordá que todas las configuraciones (categorías, proyectos, Splitwise, email) pueden modificarse en cualquier momento desde "Mis datos" en el menú.</p>
-      <form method="post" style="margin-top: 1rem;">
-        {% csrf_token %}
-        <input type="hidden" name="onboarding_complete" value="1">
-        <button type="submit" class="btn-finish">¡Empezar a Usar Cachin! 🚀</button>
-      </form>
-    </div>
-    {% endif %}
-  </div>
-  {% endif %}
-
   <!-- Email automation moved to Manage views -->
 
   <!-- Quick-add compact form -->
-  <section id="quick-add" style="margin:1rem 0;padding:0.75rem;border:1px solid var(--accent);background:var(--panel);{% if is_onboarding and onboarding_step == 5 %}opacity:0.6;{% endif %}">
+  <section id="quick-add" style="margin:1rem 0;padding:0.75rem;border:1px solid var(--accent);background:var(--panel);">
     <style>
       /* Compact grid for quick-add, keeps fields aligned and wraps neatly on mobile */
       #quick-add .qa-grid{
@@ -56,7 +25,11 @@
         #quick-add .qa-grid{grid-template-columns:repeat(4,1fr)}
       }
     </style>
-    <form id="quick-add-form" action="{% url 'expenses:quick_transaction' %}" method="post">
+    <form id="quick-add-form"
+          hx-post="{% url 'expenses:quick_transaction' %}"
+          hx-target="#qa-msg"
+          hx-swap="innerHTML"
+          hx-indicator="#qa-submit">
       {% csrf_token %}
       <div class="qa-grid">
         <input name="description" id="qa-description" class="qa-description" placeholder="Descripción*" required>
@@ -104,10 +77,35 @@
             <option value="{{ name }}">
           {% endfor %}
         </datalist>
-        <button id="qa-submit" type="submit">Añadir</button>
+        <button id="qa-submit" type="submit">
+          <span class="htmx-indicator">Guardando...</span>
+          <span class="normal-text">Añadir</span>
+        </button>
       </div>
     </form>
-    <div id="qa-msg" aria-live="polite" style="margin-top:0.5rem;opacity:0;transition:opacity .2s">&nbsp;</div>
+    <div id="qa-msg" aria-live="polite" style="margin-top:0.5rem;min-height:1.5rem"></div>
+    <style>
+      #qa-submit .htmx-indicator { display: none; }
+      #qa-submit.htmx-request .htmx-indicator { display: inline; }
+      #qa-submit.htmx-request .normal-text { display: none; }
+    </style>
+    <script>
+      // Set default date on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        const dateInput = document.getElementById('qa-date');
+        if (dateInput && !dateInput.value) {
+          dateInput.value = new Date().toISOString().slice(0,10);
+        }
+      });
+      // Reset form and reload page after successful submission
+      document.getElementById('quick-add-form').addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.successful) {
+          this.reset();
+          document.getElementById('qa-date').value = new Date().toISOString().slice(0,10);
+          setTimeout(() => window.location.reload(), 700);
+        }
+      });
+    </script>
     
     <!-- Bulk import link -->
     <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px dashed var(--accent);">
@@ -125,7 +123,7 @@
 
 
   <!-- Últimas transacciones (paginadas, 5 por página) -->
-  <section id="recent-transactions" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);{% if is_onboarding and onboarding_step == 5 %}opacity:0.5;{% endif %}">
+  <section id="recent-transactions" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
     <h2 style="margin:0 0 .5rem 0">Últimas transacciones</h2>
     {% if tx_page and tx_page.object_list %}
       <ul style="list-style:none;padding:0;margin:0">
@@ -226,21 +224,12 @@
   </section>
 
   <!-- Gastos por categoría con carga independiente -->
-  <section id="category-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);{% if is_onboarding and onboarding_step == 5 %}opacity:0.5;{% endif %}">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 .5rem 0">
-      <h2 style="margin:0">Gastos por categoría</h2>
-      <label style="font-size:0.9rem;cursor:pointer;display:flex;align-items:center;gap:0.35rem">
-        <input type="checkbox" id="convert-to-usd" style="cursor:pointer"
-               {% if user_preferences.convert_expenses_to_usd %}checked{% endif %}>
-        <span>Convertir a USD</span>
-      </label>
-    </div>
-    <div id="cat-month-nav" style="text-align:center;margin:.25rem 0 .5rem 0">
-      <a href="#" data-action="prev">« Mes anterior</a>
-      <span id="cat-month-label" style="margin:0 .75rem">Cargando...</span>
-      <a href="#" data-action="current" style="display:none">Mes actual »</a>
-    </div>
-    <div id="cat-expenses-content">
+  <section id="category-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
+    <h2 style="margin:0 0 .5rem 0">Gastos por categoría</h2>
+    <div hx-get="{% url 'expenses:api_category_expenses' %}"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
       <p style="text-align:center;color:#999">Cargando gastos...</p>
     </div>
   </section>
@@ -248,7 +237,10 @@
   <!-- Gastos por proyecto (total, sin filtro de mes) -->
   <section id="project-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
     <h2 style="margin:0 0 .5rem 0">Gastos por proyecto (Total)</h2>
-    <div id="proj-expenses-content">
+    <div hx-get="{% url 'expenses:api_project_expenses' %}"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
       <p style="text-align:center;color:#999">Cargando gastos...</p>
     </div>
   </section>
@@ -256,686 +248,12 @@
   <!-- Gastos por origen (mensual, con navegación) -->
   <section id="source-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
     <h2 style="margin:0 0 .5rem 0">Gastos por origen</h2>
-    <div id="src-month-nav" style="text-align:center;margin:.25rem 0 .5rem 0">
-      <a href="#" data-action="prev">« Mes anterior</a>
-      <span id="src-month-label" style="margin:0 .75rem">Cargando...</span>
-      <a href="#" data-action="current" style="display:none">Mes actual »</a>
-    </div>
-    <div id="src-expenses-content">
+    <div hx-get="{% url 'expenses:api_source_expenses' %}"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
       <p style="text-align:center;color:#999">Cargando gastos...</p>
     </div>
   </section>
 
-  <script>
-  (function() {
-    let currentMonth = null;
-    let currentMonthStr = null;
-    const convertCheckbox = document.getElementById('convert-to-usd');
-
-    // CSRF token helper
-    function getCookie(name) {
-      let cookieValue = null;
-      if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i].trim();
-          if (cookie.substring(0, name.length + 1) === (name + '=')) {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-            break;
-          }
-        }
-      }
-      return cookieValue;
-    }
-    const csrftoken = getCookie('csrftoken');
-
-    async function loadCategoryExpenses(month) {
-      const content = document.getElementById('cat-expenses-content');
-      const label = document.getElementById('cat-month-label');
-      const nav = document.getElementById('cat-month-nav');
-
-      // Show loading
-      content.innerHTML = '<p style="text-align:center;color:#999">Cargando...</p>';
-
-      try {
-        const url = month ? `/expenses/api/category-expenses/?m=${month}` : '/expenses/api/category-expenses/';
-        const response = await fetch(url);
-
-        if (!response.ok) throw new Error('Error al cargar');
-
-        const data = await response.json();
-
-        // Update current state
-        currentMonth = data.selected_month_str;
-        currentMonthStr = data.m_current;
-
-        // Update month label
-        label.textContent = `Mes ${data.selected_month_str}`;
-
-        // Show/hide "current month" link
-        const currentLink = nav.querySelector('[data-action="current"]');
-        if (data.selected_month_str !== data.m_current) {
-          currentLink.style.display = 'inline';
-        } else {
-          currentLink.style.display = 'none';
-        }
-
-        // Show warning if converting to USD and there are missing rates
-        let warningHtml = '';
-        if (data.convert_to_usd && data.missing_rates > 0) {
-          warningHtml = `<div style="background:#fff4e5;border:1px solid #ffb74d;padding:0.5rem;margin-bottom:0.5rem;border-radius:4px;font-size:0.9rem">
-            ⚠️ <strong>${data.missing_rates} transacciones</strong> no tienen tasa de cambio y no están incluidas en estos totales.
-          </div>`;
-        }
-
-        // Render table
-        if (data.cat_expenses && data.cat_expenses.length > 0) {
-          let html = warningHtml;
-          html += '<table style="width:100%;border-collapse:collapse"><thead><tr>';
-          html += '<th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Categoría</th>';
-
-          // Show currency column only if not converting to USD
-          if (!data.convert_to_usd) {
-            html += '<th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>';
-          }
-
-          html += '<th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">';
-          html += data.convert_to_usd ? 'Total (USD)' : 'Total';
-          html += '</th>';
-          html += '</tr></thead><tbody>';
-
-          data.cat_expenses.forEach(row => {
-            html += '<tr>';
-
-            // Build the URL for filtering transactions
-            const categoryParam = encodeURIComponent(row.category);
-            const currencyParam = data.convert_to_usd ? '' : `&currency=${encodeURIComponent(row.currency)}`;
-            const monthParam = `&month=${encodeURIComponent(data.selected_month_str)}`;
-            const filterUrl = `/expenses/manage/category-transactions/?category=${categoryParam}${currencyParam}${monthParam}`;
-
-            html += `<td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">`;
-            html += `<a href="${filterUrl}" style="color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)">${row.category}</a>`;
-            html += `</td>`;
-
-            if (!data.convert_to_usd) {
-              html += `<td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">${row.currency}</td>`;
-            }
-
-            html += `<td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">`;
-            html += data.convert_to_usd ? `$ ${row.total}` : row.total;
-            html += '</td>';
-            html += '</tr>';
-          });
-
-          html += '</tbody></table>';
-          content.innerHTML = html;
-        } else {
-          content.innerHTML = warningHtml + '<p style="padding:.3rem 0">Sin gastos en este mes.</p>';
-        }
-      } catch (error) {
-        console.error('Error loading category expenses:', error);
-        content.innerHTML = '<p style="color:#d00">Error al cargar gastos. Refresca la página.</p>';
-      }
-    }
-
-    // Handle checkbox change
-    convertCheckbox.addEventListener('change', async () => {
-      // Disable checkbox during save to prevent double-clicks
-      convertCheckbox.disabled = true;
-
-      try {
-        const formData = new FormData();
-        formData.append('key', 'convert_expenses_to_usd');
-        formData.append('value', convertCheckbox.checked ? 'true' : 'false');
-
-        const response = await fetch('/expenses/api/update-preference/', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'X-CSRFToken': csrftoken
-          }
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to save preference');
-        }
-
-        // Reload all three expense views
-        loadCategoryExpenses(currentMonth);
-        window.dispatchEvent(new Event('convertPreferenceChanged'));
-
-      } catch (error) {
-        console.error('Error saving preference:', error);
-
-        // Show user-visible error
-        alert('Error al guardar la preferencia. Intentá de nuevo.');
-
-        // Revert checkbox to previous state
-        convertCheckbox.checked = !convertCheckbox.checked;
-
-      } finally {
-        // Re-enable checkbox
-        convertCheckbox.disabled = false;
-      }
-    });
-
-    // Handle navigation clicks
-    document.getElementById('cat-month-nav').addEventListener('click', (e) => {
-      if (e.target.tagName === 'A') {
-        e.preventDefault();
-        const action = e.target.getAttribute('data-action');
-
-        if (action === 'prev') {
-          // Calculate previous month
-          const [y, m] = currentMonth.split('-').map(Number);
-          const prevY = m === 1 ? y - 1 : y;
-          const prevM = m === 1 ? 12 : m - 1;
-          const prevMonth = `${prevY.toString().padStart(4, '0')}-${prevM.toString().padStart(2, '0')}`;
-          loadCategoryExpenses(prevMonth);
-        } else if (action === 'current') {
-          loadCategoryExpenses(currentMonthStr);
-        }
-      }
-    });
-
-    // Initial load
-    loadCategoryExpenses();
-  })();
-  </script>
-
-  <script>
-  // Project expenses (all time, no month filter)
-  (async function() {
-    const content = document.getElementById('proj-expenses-content');
-    const convertCheckbox = document.getElementById('convert-to-usd');
-
-    async function loadProjectExpenses() {
-      try {
-        const response = await fetch('/expenses/api/project-expenses/');
-        const data = await response.json();
-
-        // Build warning message if missing rates
-        let warningHtml = '';
-        if (data.convert_to_usd && data.missing_rates > 0) {
-          warningHtml = `<div style="background:#fff4e5;border:1px solid #ffb74d;padding:0.5rem;margin-bottom:0.5rem;border-radius:4px;font-size:0.9rem">
-            ⚠️ <strong>${data.missing_rates} transacciones</strong> no tienen tasa de cambio y no están incluidas.
-          </div>`;
-        }
-
-        // Render table
-        if (data.proj_expenses && data.proj_expenses.length > 0) {
-          let html = warningHtml;
-          html += '<table style="width:100%;border-collapse:collapse"><thead><tr>';
-          html += '<th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Proyecto</th>';
-
-          if (!data.convert_to_usd) {
-            html += '<th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>';
-          }
-
-          html += '<th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">';
-          html += data.convert_to_usd ? 'Total (USD)' : 'Total';
-          html += '</th></tr></thead><tbody>';
-
-          data.proj_expenses.forEach(row => {
-            html += '<tr>';
-
-            // Build the URL for filtering transactions by project (no month filter - all time)
-            const projectParam = encodeURIComponent(row.project);
-            const currencyParam = data.convert_to_usd ? '' : `&currency=${encodeURIComponent(row.currency)}`;
-            const filterUrl = `/expenses/manage/category-transactions/?category=&project=${projectParam}${currencyParam}`;
-
-            html += `<td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">`;
-            html += `<a href="${filterUrl}" style="color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)">${row.project}</a>`;
-            html += `</td>`;
-
-            if (!data.convert_to_usd) {
-              html += '<td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">' + row.currency + '</td>';
-            }
-
-            html += '<td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">';
-            html += data.convert_to_usd ? '$ ' + row.total : row.total;
-            html += '</td></tr>';
-          });
-
-          html += '</tbody></table>';
-          content.innerHTML = html;
-        } else {
-          content.innerHTML = warningHtml + '<p style="padding:.3rem 0">Sin gastos registrados.</p>';
-        }
-      } catch (error) {
-        console.error('Error loading project expenses:', error);
-        content.innerHTML = '<p style="color:#d00">Error al cargar gastos. Refresca la página.</p>';
-      }
-    }
-
-    // Listen for preference changes from the main checkbox handler
-    window.addEventListener('convertPreferenceChanged', loadProjectExpenses);
-
-    // Initial load
-    loadProjectExpenses();
-  })();
-  </script>
-
-  <script>
-  // Source expenses (monthly with navigation)
-  (function() {
-    let srcCurrentMonth = null;
-    let srcCurrentMonthStr = null;
-    const convertCheckbox = document.getElementById('convert-to-usd');
-
-    async function loadSourceExpenses(monthParam) {
-      const content = document.getElementById('src-expenses-content');
-      const monthLabel = document.getElementById('src-month-label');
-      const currentLink = document.querySelector('#src-month-nav a[data-action="current"]');
-
-      try {
-        const url = monthParam
-          ? `/expenses/api/source-expenses/?m=${monthParam}`
-          : '/expenses/api/source-expenses/';
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        // Update state
-        srcCurrentMonth = data.m_prev;
-        srcCurrentMonthStr = data.selected_month_str;
-
-        // Update month label
-        monthLabel.textContent = data.selected_month_str;
-
-        // Show/hide "Mes actual" link
-        if (data.selected_month_str === data.m_current) {
-          currentLink.style.display = 'none';
-        } else {
-          currentLink.style.display = 'inline';
-        }
-
-        // Build warning message if missing rates
-        let warningHtml = '';
-        if (data.convert_to_usd && data.missing_rates > 0) {
-          warningHtml = `<div style="background:#fff4e5;border:1px solid #ffb74d;padding:0.5rem;margin-bottom:0.5rem;border-radius:4px;font-size:0.9rem">
-            ⚠️ <strong>${data.missing_rates} transacciones</strong> no tienen tasa de cambio y no están incluidas.
-          </div>`;
-        }
-
-        // Render table
-        if (data.src_expenses && data.src_expenses.length > 0) {
-          let html = warningHtml;
-          html += '<table style="width:100%;border-collapse:collapse"><thead><tr>';
-          html += '<th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Origen</th>';
-
-          if (!data.convert_to_usd) {
-            html += '<th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>';
-          }
-
-          html += '<th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">';
-          html += data.convert_to_usd ? 'Total (USD)' : 'Total';
-          html += '</th></tr></thead><tbody>';
-
-          data.src_expenses.forEach(row => {
-            html += '<tr>';
-
-            // Build the URL for filtering transactions by source
-            const sourceParam = encodeURIComponent(row.source);
-            const currencyParam = data.convert_to_usd ? '' : `&currency=${encodeURIComponent(row.currency)}`;
-            const monthParam = `&month=${encodeURIComponent(data.selected_month_str)}`;
-            const filterUrl = `/expenses/manage/category-transactions/?category=&source=${sourceParam}${currencyParam}${monthParam}`;
-
-            html += `<td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">`;
-            html += `<a href="${filterUrl}" style="color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)">${row.source}</a>`;
-            html += `</td>`;
-
-            if (!data.convert_to_usd) {
-              html += '<td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">' + row.currency + '</td>';
-            }
-
-            html += '<td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">';
-            html += data.convert_to_usd ? '$ ' + row.total : row.total;
-            html += '</td></tr>';
-          });
-
-          html += '</tbody></table>';
-          content.innerHTML = html;
-        } else {
-          content.innerHTML = warningHtml + '<p style="padding:.3rem 0">Sin gastos en este mes.</p>';
-        }
-      } catch (error) {
-        console.error('Error loading source expenses:', error);
-        content.innerHTML = '<p style="color:#d00">Error al cargar gastos. Refresca la página.</p>';
-      }
-    }
-
-    // Navigation handlers
-    document.querySelector('#src-month-nav a[data-action="prev"]').addEventListener('click', (e) => {
-      e.preventDefault();
-      loadSourceExpenses(srcCurrentMonth);
-    });
-
-    document.querySelector('#src-month-nav a[data-action="current"]').addEventListener('click', (e) => {
-      e.preventDefault();
-      loadSourceExpenses(null);
-    });
-
-    // Listen for preference changes from the main checkbox handler
-    window.addEventListener('convertPreferenceChanged', () => {
-      // Use current month or null to reload the currently displayed month
-      loadSourceExpenses(srcCurrentMonthStr || null);
-    });
-
-    // Initial load
-    loadSourceExpenses();
-  })();
-  </script>
-
-  <script>
-  (function(){
-    console.log('qa-init')
-    // helpers
-    function qs(sel){return document.querySelector(sel)}
-    function qsa(sel){return document.querySelectorAll(sel)}
-
-    const form = qs('#quick-add-form')
-    const msg = qs('#qa-msg')
-
-    // set default date to today
-    const dateInput = qs('#qa-date')
-    if(dateInput && !dateInput.value){
-      const d = new Date();
-      dateInput.value = d.toISOString().slice(0,10)
-    }
-
-    // Select options are rendered server-side on page load; no client fetch needed.
-
-    // Fallback visual dropdown when browser doesn't show datalist suggestions
-    function attachSuggestUI(inputSel, datalistSel){
-      const input = qs(inputSel)
-      const dl = qs(datalistSel)
-      if(!input || !dl) return
-
-      // create container
-      const box = document.createElement('div')
-      box.style.position = 'absolute'
-      // debug-friendly visible styles
-      box.style.background = '#ffffff'
-      box.style.border = '2px solid #ff2d6d'
-      box.style.padding = '4px'
-      box.style.display = 'none'
-      box.style.zIndex = '2147483647'
-      box.style.maxHeight = '220px'
-      box.style.overflow = 'auto'
-      box.style.boxShadow = '0 4px 12px rgba(0,0,0,0.25)'
-      box.className = 'qa-suggest-box'
-      // append as sibling to input to avoid global click/overlay issues
-      const parent = input.parentElement || input.closest('form') || document.body
-      // ensure parent is positioned so absolute box is relative to it
-      const parentPos = window.getComputedStyle(parent).position
-      if(!parentPos || parentPos === 'static') parent.style.position = 'relative'
-      parent.insertBefore(box, input.nextSibling)
-
-      function rebuild(){
-        box.innerHTML = ''
-        const opts = Array.from(dl.querySelectorAll('option')).map(o=>o.value)
-        // log for debugging
-        console.log('qa-datalist rebuild', inputSel, opts)
-        opts.forEach(val=>{
-          const it = document.createElement('div')
-          it.textContent = val
-          it.style.padding = '4px'
-          it.style.cursor = 'pointer'
-          // use pointerdown to avoid blur-before-click issues and dispatch input event after setting
-          it.addEventListener('pointerdown', function(ev){
-            input.value = val
-            input.dispatchEvent(new Event('input', {bubbles:true}))
-            hide()
-          })
-          box.appendChild(it)
-        })
-        // If the input is currently focused, show the box so new options are visible immediately
-        try{
-          if(document.activeElement === input && box.children.length){
-            show()
-          }
-        }catch(e){/* ignore */}
-      }
-
-      function show(){
-        console.log('qa-show', inputSel)
-        const rect = input.getBoundingClientRect()
-        // position relative to parent
-        const pRect = parent.getBoundingClientRect()
-        box.style.left = (rect.left - pRect.left) + 'px'
-        box.style.top = (rect.bottom - pRect.top) + 'px'
-        box.style.width = rect.width + 'px'
-        rebuild()
-        box.style.display = 'block'
-      }
-      function hide(){ console.log('qa-hide', inputSel); box.style.display = 'none' }
-
-      input.addEventListener('focus', ()=>{
-        // if there are options, show box
-        if(dl.querySelectorAll('option').length) show()
-      })
-      input.addEventListener('input', ()=>{
-        const q = input.value.toLowerCase()
-        Array.from(box.children).forEach(child=>{
-          child.style.display = child.textContent.toLowerCase().includes(q) ? 'block' : 'none'
-        })
-        if(box.children.length && box.style.display!=='block') show()
-      })
-      // hide when input loses focus (delay to allow pointerdown selection)
-      input.addEventListener('focusout', ()=>{
-        setTimeout(()=>{
-          if(document.activeElement !== input && !box.contains(document.activeElement)) hide()
-        }, 120)
-      })
-      // rebuild when datalist updates
-      const obs = new MutationObserver(rebuild)
-      obs.observe(dl, {childList:true})
-      console.log('qa-attachSuggestUI', inputSel, datalistSel)
-    }
-
-    // attach suggest UI to inputs
-    // old datalist-based fallback is no longer used; still keep attachSuggestUI safe
-    // attachSuggestUI('#qa-category','#qa-categories')
-    // attachSuggestUI('#qa-project','#qa-projects')
-    // attachSuggestUI('#qa-payee','#qa-payees')
-    // attachSuggestUI('#qa-source','#qa-sources')
-
-    // Debug helper: show datalist options and input values
-    function updateDebug(){
-      try{
-        const parts = []
-        ;['category','project','payee','source'].forEach(name=>{
-          const inp = qs('#qa-'+name)
-          const dl = qs('#qa-'+name+'s')
-          if(!inp) return
-          const opts = dl ? Array.from(dl.options).map(o=>({v:o.value,t:o.value})) : []
-          parts.push(name.toUpperCase()+": options:"+opts.length+" value:"+(inp.value||''))
-          parts.push(JSON.stringify(opts))
-        })
-        const debugEl = qs('#qa-debug')
-        if(!debugEl){
-          // No debug container present; skip safely
-          return
-        }
-        debugEl.textContent = parts.join('\n')
-      }catch(e){ console.log('qa-debug err', e) }
-    }
-
-    // wire up text inputs to update debug on change
-    ;['category','project','payee','source'].forEach(name=>{
-      const inp = qs('#qa-'+name)
-      if(!inp) return
-      inp.addEventListener('input', updateDebug)
-      inp.addEventListener('change', updateDebug)
-    })
-
-    // submit handler (AJAX) — uses fetch and expects JSON
-    form.addEventListener('submit', async function(ev){
-      try{
-        if(!form) return
-        if(ev && typeof ev.preventDefault === 'function'){
-          ev.preventDefault()
-        } else if (window.event && typeof window.event.preventDefault === 'function'){
-          window.event.preventDefault()
-        }
-
-        const fd = new FormData(form)
-        // client-side amount validation/normalization
-        const amtRaw = (fd.get('amount')||'').toString().replace(',','.')
-        const amtNum = Number(amtRaw)
-        if(!Number.isFinite(amtNum)){
-          showMsg('Importe inválido. Ej: 123.45', true)
-          return
-        }
-        fd.set('amount', amtNum.toFixed(2))
-        // client-side currency normalization
-        const cur = (fd.get('currency')||'').toUpperCase().trim()
-        if(!/^[A-Z]{3}$/.test(cur)){
-          showMsg('Moneda inválida (3 letras).', true)
-          return
-        }
-        fd.set('currency', cur)
-
-      try{
-        const res = await fetch(form.action, {method:'POST', body:fd, credentials: 'same-origin', headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}})
-        const contentType = res.headers.get('content-type') || ''
-        let json = null
-        if(contentType.includes('application/json')){
-          json = await res.json()
-        } else {
-          showMsg('Respuesta inesperada del servidor.', true)
-          return
-        }
-        if(res.ok && json.success){
-          // Show success briefly, then refresh so new data appears
-          showMsg(json.message || 'Añadido', false)
-          setTimeout(()=>{ window.location.reload() }, 700)
-        }else{
-          const errs = (json && (json.errors || (json.message && [json.message]))) || ['Error']
-          showMsg(errs.join(' / '), true)
-        }
-      }catch(err){
-        console.error('quick-add submit error', err)
-        showMsg('Error enviando. Intentá de nuevo.', true)
-      }
-      }catch(err){
-        console.error('quick-add handler error', err)
-        showMsg('Error procesando formulario.', true)
-      }
-    })
-
-    // initial debug update so panel shows server-rendered values
-    updateDebug()
-
-    function showMsg(text, isError){
-      msg.textContent = text
-      msg.style.opacity = '1'
-      msg.style.color = isError ? '#dc2626' : 'var(--accent)'
-      setTimeout(()=>{ msg.style.opacity = '0' }, 1000)
-    }
-  })()
-  </script>
-  
-  <style>
-    .onboarding-banner {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 2rem;
-      border-radius: 8px;
-      margin-bottom: 2rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    
-    .onboarding-progress {
-      margin-bottom: 1.5rem;
-    }
-    
-    .progress-bar {
-      width: 100%;
-      height: 8px;
-      background-color: rgba(255,255,255,0.3);
-      border-radius: 4px;
-      overflow: hidden;
-      margin-bottom: 0.5rem;
-    }
-    
-    .progress-fill {
-      height: 100%;
-      background-color: white;
-      transition: width 0.3s ease;
-    }
-    
-    .step-text {
-      margin: 0;
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
-    
-    .onboarding-message h2 {
-      margin: 0 0 1rem 0;
-      font-size: 1.8rem;
-    }
-    
-    .onboarding-message p {
-      line-height: 1.6;
-      margin-bottom: 1rem;
-    }
-    
-    .onboarding-message ul {
-      background-color: rgba(255,255,255,0.1);
-      padding: 1rem 1rem 1rem 2rem;
-      border-radius: 6px;
-    }
-    
-    .onboarding-message li {
-      margin-bottom: 0.5rem;
-    }
-    
-    .email-box {
-      background-color: rgba(255,255,255,0.2);
-      padding: 1rem;
-      border-radius: 6px;
-      margin: 1rem 0;
-      border-left: 4px solid white;
-    }
-    
-    .email-box code {
-      background-color: rgba(0,0,0,0.2);
-      padding: 0.25rem 0.5rem;
-      border-radius: 3px;
-      font-size: 0.95rem;
-      word-break: break-all;
-    }
-    
-    .reminder {
-      background-color: rgba(255,255,255,0.15);
-      padding: 0.75rem;
-      border-radius: 4px;
-      margin: 1rem 0;
-    }
-    
-    .btn-secondary, .btn-finish {
-      background-color: white;
-      color: #667eea;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    
-    .btn-finish {
-      padding: 1rem 2rem;
-      font-size: 1.1rem;
-    }
-    
-    .btn-secondary:hover, .btn-finish:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-  </style>
 {% endblock %}

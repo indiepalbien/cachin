@@ -1,0 +1,46 @@
+<div id="project-expenses-section">
+  {% if convert_to_usd and missing_rates > 0 %}
+    <div style="background:#fff4e5;border:1px solid #ffb74d;padding:0.5rem;margin-bottom:0.5rem;border-radius:4px;font-size:0.9rem">
+      ⚠️ <strong>{{ missing_rates }} transacciones</strong> no tienen tasa de cambio y no están incluidas.
+    </div>
+  {% endif %}
+
+  <div id="proj-expenses-content">
+    {% if proj_expenses %}
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr>
+            <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Proyecto</th>
+            {% if not convert_to_usd %}
+              <th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>
+            {% endif %}
+            <th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">
+              {% if convert_to_usd %}Total (USD){% else %}Total{% endif %}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in proj_expenses %}
+            <tr>
+              <td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">
+                {% url 'expenses:edit_category_transactions' as filter_url %}
+                <a href="{{ filter_url }}?project={{ row.project|urlencode }}{% if not convert_to_usd %}&currency={{ row.currency|urlencode }}{% endif %}"
+                   style="color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)">
+                  {{ row.project }}
+                </a>
+              </td>
+              {% if not convert_to_usd %}
+                <td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">{{ row.currency }}</td>
+              {% endif %}
+              <td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">
+                {% if convert_to_usd %}$ {% endif %}{{ row.total }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="padding:.3rem 0">Sin proyectos.</p>
+    {% endif %}
+  </div>
+</div>

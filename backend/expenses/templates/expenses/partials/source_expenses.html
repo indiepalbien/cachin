@@ -1,0 +1,60 @@
+<div id="source-expenses-section">
+  <div id="src-month-nav" style="text-align:center;margin:.25rem 0 .5rem 0">
+    <a href="#"
+       hx-get="{% url 'expenses:api_source_expenses' %}?m={{ m_prev }}"
+       hx-target="#source-expenses-section"
+       hx-swap="outerHTML">« Mes anterior</a>
+    <span id="src-month-label" style="margin:0 .75rem">Mes {{ selected_month_str }}</span>
+    {% if selected_month_str != m_current %}
+      <a href="#"
+         hx-get="{% url 'expenses:api_source_expenses' %}"
+         hx-target="#source-expenses-section"
+         hx-swap="outerHTML">Mes actual »</a>
+    {% endif %}
+  </div>
+
+  {% if convert_to_usd and missing_rates > 0 %}
+    <div style="background:#fff4e5;border:1px solid #ffb74d;padding:0.5rem;margin-bottom:0.5rem;border-radius:4px;font-size:0.9rem">
+      ⚠️ <strong>{{ missing_rates }} transacciones</strong> no tienen tasa de cambio y no están incluidas.
+    </div>
+  {% endif %}
+
+  <div id="src-expenses-content">
+    {% if src_expenses %}
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr>
+            <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Origen</th>
+            {% if not convert_to_usd %}
+              <th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>
+            {% endif %}
+            <th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">
+              {% if convert_to_usd %}Total (USD){% else %}Total{% endif %}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in src_expenses %}
+            <tr>
+              <td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">
+                {% url 'expenses:edit_category_transactions' as filter_url %}
+                <a href="{{ filter_url }}?source={{ row.source|urlencode }}{% if not convert_to_usd %}&currency={{ row.currency|urlencode }}{% endif %}&month={{ selected_month_str }}"
+                   style="color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)">
+                  {{ row.source }}
+                </a>
+              </td>
+              {% if not convert_to_usd %}
+                <td style="padding:.3rem 0;text-align:center;border-bottom:1px dashed var(--border)">{{ row.currency }}</td>
+              {% endif %}
+              <td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">
+                {% if convert_to_usd %}$ {% endif %}{{ row.total }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p style="padding:.3rem 0">Sin gastos en este mes.</p>
+    {% endif %}
+  </div>
+</div>

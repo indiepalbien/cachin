@@ -48,7 +48,14 @@
             </div>
             <div style="flex:1 1 180px;min-width:180px;">
               <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Categoría</label>
-              <select name="category_id" style="width:100%;padding:0.45rem 0.55rem;">
+              <select name="category_id"
+                      style="width:100%;padding:0.45rem 0.55rem;"
+                      hx-post="{% url 'expenses:categorize_transactions' %}"
+                      hx-include="[name='tx_id'],[name='action'],[name='comments']"
+                      hx-trigger="change"
+                      hx-target="#save-status-{{ tx.id }}"
+                      hx-swap="innerHTML"
+                      hx-indicator="#save-status-{{ tx.id }}">
                 <option value="">Sin categoría</option>
                 {% for cat in categories %}
                   <option value="{{ cat.id }}" {% if tx.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
@@ -57,10 +64,21 @@
             </div>
             <div style="flex:1 1 220px;min-width:220px;">
               <label style="display:block;font-weight:600;margin-bottom:0.25rem;">Comentario</label>
-              <textarea name="comments" rows="2" style="width:100%;padding:0.45rem 0.55rem;">{{ tx.comments }}</textarea>
+              <textarea name="comments"
+                        rows="2"
+                        style="width:100%;padding:0.45rem 0.55rem;"
+                        hx-post="{% url 'expenses:categorize_transactions' %}"
+                        hx-include="[name='tx_id'],[name='action'],[name='category_id']"
+                        hx-trigger="input changed delay:1s"
+                        hx-target="#save-status-{{ tx.id }}"
+                        hx-swap="innerHTML"
+                        hx-indicator="#save-status-{{ tx.id }}">{{ tx.comments }}</textarea>
             </div>
-            <div style="flex:0 0 auto;align-self:flex-end;">
-              <button type="submit">Guardar</button>
+            <div style="flex:0 0 auto;align-self:flex-end;display:flex;gap:0.5rem;flex-direction:column;">
+              <div id="save-status-{{ tx.id }}" class="save-status" style="min-height:1.5rem">
+                <span class="spinner htmx-indicator"></span>
+                <span class="status-text"></span>
+              </div>
             </div>
           </div>
         </form>
@@ -83,32 +101,4 @@
   {% endif %}
 </section>
 
-<script src="{% static 'expenses/categorize-autosave.js' %}" defer></script>
-<style>
-/* Auto-save status indicators */
-.save-status {
-  font-size: 0.85rem;
-  padding: 0.25rem 0.5rem;
-  margin-left: 0.5rem;
-  border-radius: 3px;
-  transition: opacity 0.3s ease;
-  display: inline-block;
-}
-
-.save-status-idle { opacity: 0; }
-.save-status-typing { color: #6b7280; opacity: 0.7; }
-.save-status-saving { color: #3b82f6; background-color: #dbeafe; opacity: 1; }
-.save-status-success { color: #059669; background-color: #d1fae5; opacity: 1; }
-.save-status-error { color: #dc2626; background-color: #fee2e2; opacity: 1; font-weight: 500; }
-
-/* Progressive enhancement: hide save buttons when JS loads */
-body.js-loaded form[id^="tx-"] button[type="submit"] {
-  display: none !important;
-}
-</style>
-
-<script>
-// Mark body as JS-loaded for progressive enhancement
-document.body.classList.add('js-loaded');
-</script>
 {% endblock %}

@@ -108,7 +108,7 @@ def quick_transaction(request):
     Behavior:
     - Required: description, amount, date, currency.
     - Shows existing DB options in the form (via datalist); on submit, missing related objects are created for the user (cascade).
-    - Returns JSON when request is AJAX/JSON (used by inline JS) or redirects with messages for normal POST.
+    - Returns HTML fragment for HTMX requests or redirects with messages for normal POST.
     """
     user = request.user
     data = request.POST
@@ -138,20 +138,24 @@ def quick_transaction(request):
     if not description:
         errors.append("Descripción requerida.")
     if not amount:
-        errors.append("Amount is required.")
+        errors.append("Importe requerido.")
     if not date_str:
-        errors.append("Date is required.")
+        errors.append("Fecha requerida.")
     if not currency:
-        errors.append("Currency is required.")
+        errors.append("Moneda requerida.")
 
     # Validate currency format (ISO-4217 style: 3 letters)
     if currency and (len(currency) != 3 or not currency.isalpha()):
-        errors.append("Currency must be a 3-letter code (ISO-4217).")
+        errors.append("La moneda debe ser un código de 3 letras (ISO-4217).")
 
     # If any errors, respond appropriately
     if errors:
-        if request.headers.get("x-requested-with") == "XMLHttpRequest" or request.META.get("HTTP_ACCEPT", "").find("application/json") != -1:
-            return JsonResponse({"success": False, "errors": errors}, status=400)
+        error_msg = " / ".join(errors)
+        if request.htmx:
+            return HttpResponse(
+                f'<span style="color:#dc2626;opacity:1">{error_msg}</span>',
+                status=400
+            )
         for e in errors:
             messages.error(request, e)
         return redirect("profile")
@@ -160,18 +164,18 @@ def quick_transaction(request):
     try:
         amount_dec = Decimal(amount)
     except (InvalidOperation, TypeError):
-        msg = "Amount must be a number."
-        if request.headers.get("x-requested-with") == "XMLHttpRequest":
-            return JsonResponse({"success": False, "errors": [msg]}, status=400)
+        msg = "El importe debe ser un número."
+        if request.htmx:
+            return HttpResponse(f'<span style="color:#dc2626;opacity:1">{msg}</span>', status=400)
         messages.error(request, msg)
         return redirect("profile")
 
     try:
         tx_date = datetime.date.fromisoformat(date_str)
     except Exception:
-        msg = "Invalid date format. Use YYYY-MM-DD."
-        if request.headers.get("x-requested-with") == "XMLHttpRequest":
-            return JsonResponse({"success": False, "errors": [msg]}, status=400)
+        msg = "Formato de fecha inválido. Usar YYYY-MM-DD."
+        if request.htmx:
+            return HttpResponse(f'<span style="color:#dc2626;opacity:1">{msg}</span>', status=400)
         messages.error(request, msg)
         return redirect("profile")
 
@@ -197,13 +201,13 @@ def quick_transaction(request):
             comments=comments,
         )
         success_msg = "Transacción añadida."
-        if request.headers.get("x-requested-with") == "XMLHttpRequest" or request.META.get("HTTP_ACCEPT", "").find("application/json") != -1:
-            return JsonResponse({"success": True, "message": success_msg, "id": tx.id})
+        if request.htmx:
+            return HttpResponse(f'<span style="color:var(--accent);opacity:1">{success_msg}</span>')
         messages.success(request, success_msg)
     except Exception as e:
         err = f"Error creando transacción: {e}"
-        if request.headers.get("x-requested-with") == "XMLHttpRequest":
-            return JsonResponse({"success": False, "errors": [err]}, status=500)
+        if request.htmx:
+            return HttpResponse(f'<span style="color:#dc2626;opacity:1">{err}</span>', status=500)
         messages.error(request, err)
 
     return redirect("profile")
@@ -306,19 +310,23 @@ def categorize_transactions(request):
         if action == "assign_tx":
             success, message, tx_id = _update_transaction_category(request, user)
 
-            # AJAX response
-            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            # HTMX response
+            if request.htmx:
                 if success:
-                    return JsonResponse({
-                        "success": True,
-                        "message": message,
-                        "tx_id": tx_id
-                    })
+                    return HttpResponse(
+                        '<span class="spinner" style="display:none"></span>'
+                        '<span class="status-text" style="color:#059669;background:#d1fae5;'
+                        'padding:0.25rem 0.5rem;border-radius:3px;display:inline-block">'
+                        '✓ Guardado</span>'
+                    )
                 else:
-                    return JsonResponse({
-                        "success": False,
-                        "errors": [message]
-                    }, status=400)
+                    return HttpResponse(
+                        '<span class="spinner" style="display:none"></span>'
+                        f'<span class="status-text" style="color:#dc2626;background:#fee2e2;'
+                        f'padding:0.25rem 0.5rem;border-radius:3px;display:inline-block">'
+                        f'{message}</span>',
+                        status=400
+                    )
 
             # Traditional POST response (fallback)
             if success:
@@ -361,19 +369,23 @@ def edit_category_transactions(request):
         if action == "assign_tx":
             success, message, tx_id = _update_transaction_category(request, user)
 
-            # AJAX response
-            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            # HTMX response
+            if request.htmx:
                 if success:
-                    return JsonResponse({
-                        "success": True,
-                        "message": message,
-                        "tx_id": tx_id
-                    })
+                    return HttpResponse(
+                        '<span class="spinner" style="display:none"></span>'
+                        '<span class="status-text" style="color:#059669;background:#d1fae5;'
+                        'padding:0.25rem 0.5rem;border-radius:3px;display:inline-block">'
+                        '✓ Guardado</span>'
+                    )
                 else:
-                    return JsonResponse({
-                        "success": False,
-                        "errors": [message]
-                    }, status=400)
+                    return HttpResponse(
+                        '<span class="spinner" style="display:none"></span>'
+                        f'<span class="status-text" style="color:#dc2626;background:#fee2e2;'
+                        f'padding:0.25rem 0.5rem;border-radius:3px;display:inline-block">'
+                        f'{message}</span>',
+                        status=400
+                    )
 
             # Traditional POST response (fallback) - redirect with filters
             category_name = request.GET.get('category', '')
@@ -400,8 +412,8 @@ def edit_category_transactions(request):
             tx_id = request.POST.get("tx_id")
 
             if not tx_id:
-                if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                    return JsonResponse({"success": False, "errors": ["ID de transacción requerido"]}, status=400)
+                if request.htmx:
+                    return HttpResponse("ID de transacción requerido", status=400)
                 messages.error(request, "ID de transacción requerido.")
                 return redirect("profile")
 
@@ -410,18 +422,14 @@ def edit_category_transactions(request):
                 tx_description = tx.description
                 tx.delete()
 
-                # AJAX response
-                if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                    return JsonResponse({
-                        "success": True,
-                        "message": f"Transacción '{tx_description}' eliminada.",
-                        "tx_id": tx_id
-                    })
+                # HTMX response - return empty to remove the element
+                if request.htmx:
+                    return HttpResponse("")
 
                 messages.success(request, f"Transacción '{tx_description}' eliminada.")
             except Transaction.DoesNotExist:
-                if request.headers.get("x-requested-with") == "XMLHttpRequest":
-                    return JsonResponse({"success": False, "errors": ["Transacción no encontrada"]}, status=404)
+                if request.htmx:
+                    return HttpResponse("Transacción no encontrada", status=404)
                 messages.error(request, "Transacción no encontrada.")
 
             # Redirect back with filters
@@ -980,20 +988,26 @@ class TransactionListView(OwnerListView):
         return ctx
 
     def post(self, request, *args, **kwargs):
-        """Handle transaction updates and deletions via AJAX"""
+        """Handle transaction updates and deletions via HTMX/AJAX"""
         action = request.POST.get('action')
         tx_id = request.POST.get('tx_id')
 
         if not tx_id:
+            if request.htmx:
+                return HttpResponse("ID de transacción requerido", status=400)
             return JsonResponse({'success': False, 'errors': ['Missing transaction ID']}, status=400)
 
         try:
             tx = Transaction.objects.get(id=tx_id, user=request.user)
         except Transaction.DoesNotExist:
+            if request.htmx:
+                return HttpResponse("Transacción no encontrada", status=404)
             return JsonResponse({'success': False, 'errors': ['Transaction not found']}, status=404)
 
         if action == 'delete_tx':
             tx.delete()
+            if request.htmx:
+                return HttpResponse("")  # Empty response removes the element
             return JsonResponse({'success': True, 'message': 'Transaction deleted'})
 
         elif action == 'update_tx':
@@ -1003,6 +1017,14 @@ class TransactionListView(OwnerListView):
                 try:
                     tx.category = Category.objects.get(id=category_id, user=request.user)
                 except Category.DoesNotExist:
+                    if request.htmx:
+                        return HttpResponse(
+                            '<span class="spinner" style="display:none"></span>'
+                            '<span class="status-text" style="color:#dc2626;background:#fee2e2;'
+                            'padding:0.25rem 0.5rem;border-radius:3px;display:inline-block">'
+                            'Categoría inválida</span>',
+                            status=400
+                        )
                     return JsonResponse({'success': False, 'errors': ['Invalid category']}, status=400)
             else:
                 tx.category = None
@@ -1013,6 +1035,14 @@ class TransactionListView(OwnerListView):
                 try:
                     tx.source = Source.objects.get(id=source_id, user=request.user)
                 except Source.DoesNotExist:
+                    if request.htmx:
+                        return HttpResponse(
+                            '<span class="spinner" style="display:none"></span>'
+                            '<span class="status-text" style="color:#dc2626;background:#fee2e2;'
+                            'padding:0.25rem 0.5rem;border-radius:3px;display:inline-block">'
+                            'Origen inválido</span>',
+                            status=400
+                        )
                     return JsonResponse({'success': False, 'errors': ['Invalid source']}, status=400)
             else:
                 tx.source = None
@@ -1023,6 +1053,14 @@ class TransactionListView(OwnerListView):
                 try:
                     tx.project = Project.objects.get(id=project_id, user=request.user)
                 except Project.DoesNotExist:
+                    if request.htmx:
+                        return HttpResponse(
+                            '<span class="spinner" style="display:none"></span>'
+                            '<span class="status-text" style="color:#dc2626;background:#fee2e2;'
+                            'padding:0.25rem 0.5rem;border-radius:3px;display:inline-block">'
+                            'Proyecto inválido</span>',
+                            status=400
+                        )
                     return JsonResponse({'success': False, 'errors': ['Invalid project']}, status=400)
             else:
                 tx.project = None
@@ -1031,8 +1069,17 @@ class TransactionListView(OwnerListView):
             tx.comments = request.POST.get('comments', '')
 
             tx.save()
+            if request.htmx:
+                return HttpResponse(
+                    '<span class="spinner" style="display:none"></span>'
+                    '<span class="status-text" style="color:#059669;background:#d1fae5;'
+                    'padding:0.25rem 0.5rem;border-radius:3px;display:inline-block">'
+                    '✓ Guardado</span>'
+                )
             return JsonResponse({'success': True, 'message': 'Transaction updated'})
 
+        if request.htmx:
+            return HttpResponse("Acción inválida", status=400)
         return JsonResponse({'success': False, 'errors': ['Invalid action']}, status=400)
 
 
@@ -1584,7 +1631,7 @@ def get_category_expenses(user, month_qs, convert_to_usd=False):
 @login_required
 @require_GET
 def api_category_expenses(request):
-    """API endpoint: Return category expenses by currency for a month as JSON."""
+    """API endpoint: Return category expenses by currency for a month (HTMX HTML or JSON)."""
     user = request.user
 
     # Helper functions for month handling
@@ -1637,14 +1684,21 @@ def api_category_expenses(request):
 
     py, pm = prev_month(sel_year, sel_month)
 
-    return JsonResponse({
+    context = {
         'cat_expenses': cat_expenses,
         'selected_month_str': month_str(sel_year, sel_month),
         'm_current': month_str(current_year, current_month),
         'm_prev': month_str(py, pm),
         'convert_to_usd': convert_to_usd,
         'missing_rates': missing_rates,
-    })
+    }
+
+    # HTMX request - return HTML
+    if request.htmx:
+        return render(request, 'expenses/partials/category_expenses.html', context)
+
+    # Legacy JSON response
+    return JsonResponse(context)
 
 
 @login_required
@@ -1716,11 +1770,18 @@ def api_project_expenses(request):
         ]
         missing_rates = 0
 
-    return JsonResponse({
+    context = {
         'proj_expenses': proj_expenses,
         'convert_to_usd': convert_to_usd,
         'missing_rates': missing_rates,
-    })
+    }
+
+    # HTMX request - return HTML
+    if request.htmx:
+        return render(request, 'expenses/partials/project_expenses.html', context)
+
+    # Legacy JSON response
+    return JsonResponse(context)
 
 
 @login_required
@@ -1832,14 +1893,21 @@ def api_source_expenses(request):
 
     py, pm = prev_month(sel_year, sel_month)
 
-    return JsonResponse({
+    context = {
         'src_expenses': src_expenses,
         'selected_month_str': month_str(sel_year, sel_month),
         'm_current': month_str(current_year, current_month),
         'm_prev': month_str(py, pm),
         'convert_to_usd': convert_to_usd,
         'missing_rates': missing_rates,
-    })
+    }
+
+    # HTMX request - return HTML
+    if request.htmx:
+        return render(request, 'expenses/partials/source_expenses.html', context)
+
+    # Legacy JSON response
+    return JsonResponse(context)
 
 
 @login_required
@@ -1882,7 +1950,7 @@ def update_forwarding_email(request):
 @login_required
 @require_http_methods(["POST"])
 def update_user_preference(request):
-    """Update user preference via AJAX"""
+    """Update user preference via AJAX/HTMX"""
     preference_key = request.POST.get('key')
     preference_value = request.POST.get('value')
 
@@ -1894,15 +1962,39 @@ def update_user_preference(request):
                 prefs.convert_expenses_to_usd = (preference_value == 'true')
                 prefs.save()
 
+            # HTMX request - return HTML fragment
+            if request.htmx:
+                return HttpResponse(
+                    '<span style="color:#059669;background:#d1fae5;padding:0.25rem 0.5rem;'
+                    'border-radius:3px;font-size:0.9rem">✓ Preferencia guardada</span>'
+                )
+
+            # Legacy JSON response
             return JsonResponse({
                 'success': True,
                 'message': 'Preference updated'
             })
         except Exception as e:
+            # HTMX request - return error HTML
+            if request.htmx:
+                return HttpResponse(
+                    f'<span style="color:#dc2626;background:#fee2e2;padding:0.25rem 0.5rem;'
+                    f'border-radius:3px;font-size:0.9rem">Error: {str(e)}</span>',
+                    status=500
+                )
+
             return JsonResponse({
                 'success': False,
                 'error': str(e)
             }, status=500)
+
+    # Invalid preference key
+    if request.htmx:
+        return HttpResponse(
+            '<span style="color:#dc2626;background:#fee2e2;padding:0.25rem 0.5rem;'
+            'border-radius:3px;font-size:0.9rem">Error: Preferencia inválida</span>',
+            status=400
+        )
 
     return JsonResponse({
         'success': False,

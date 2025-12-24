@@ -190,3 +190,109 @@ form input[type="password"]:focus {
     .login-container{max-width:100%}
 }
 
+/* ==== Autosave Status Indicators ==== */
+
+/* Base status indicator styles */
+.save-status {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: opacity 0.3s ease, background-color 0.2s ease;
+}
+
+/* Spinner is always inline-flex, but HTMX controls visibility with opacity via .htmx-indicator class */
+.save-status .spinner {
+  display: inline-block;
+}
+
+/* Status states */
+/* Hide by default when empty */
+.save-status:not(.htmx-request) .status-text:empty {
+  opacity: 0;
+}
+
+.save-status.idle {
+  opacity: 0;
+}
+
+/* Show status div when HTMX request is in progress */
+.save-status.htmx-request {
+  opacity: 1 !important;
+  color: #3b82f6;
+  background: #dbeafe;
+}
+
+/* Add "Guardando..." text during HTMX request */
+.save-status.htmx-request .status-text::before {
+  content: "Guardando...";
+}
+
+.save-status.typing {
+  color: #6b7280;
+  background: transparent;
+  opacity: 0.8;
+}
+
+.save-status.saving {
+  color: #3b82f6;
+  background: #dbeafe;
+  opacity: 1;
+}
+
+.save-status.success {
+  color: #059669;
+  background: #d1fae5;
+  opacity: 1;
+  animation: fadeOut 2s ease-in-out 1s forwards;
+}
+
+.save-status.error {
+  color: #dc2626;
+  background: #fee2e2;
+  opacity: 1;
+  font-weight: 500;
+}
+
+/* Fade out animation for success message */
+@keyframes fadeOut {
+  to { opacity: 0; }
+}
+
+/* Spinning loader */
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Field highlight during save - applies to elements with htmx-request class */
+select.htmx-request,
+textarea.htmx-request {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Pure CSS typing indicator for textareas */
+textarea[hx-post]:focus + div.save-status .status-text::before {
+  content: "Escribiendo...";
+  color: #6b7280;
+  opacity: 0.8;
+  font-size: 0.85rem;
+}
+
+/* Hide typing indicator during HTMX request (saving state takes over) */
+textarea[hx-post].htmx-request + div.save-status .status-text::before {
+  content: none;
+}
+

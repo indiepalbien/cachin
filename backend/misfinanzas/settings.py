@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_htmx',
 ]
 
 MIDDLEWARE = [
@@ -70,6 +71,7 @@ MIDDLEWARE = [
     'misfinanzas.middleware.VaryOnCookieMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_htmx.middleware.HtmxMiddleware',
     'axes.middleware.AxesMiddleware',
     'expenses.onboarding_middleware.OnboardingMiddleware',  # Add onboarding middleware
     'django.contrib.messages.middleware.MessageMiddleware',

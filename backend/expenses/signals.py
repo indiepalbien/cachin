@@ -110,7 +110,14 @@ def create_categorization_rules(sender, instance, created, update_fields, **kwar
     
     # Immediately spawn Celery task to apply rules to other uncategorized transactions
     # This happens asynchronously so it doesn't block the response
-    apply_categorization_rules_for_user.delay(
-        user_id=instance.user.id,
-        max_transactions=50  # Process up to 50 transactions per categorization
-    )
+    try:
+        apply_categorization_rules_for_user.delay(
+            user_id=instance.user.id,
+            max_transactions=50  # Process up to 50 transactions per categorization
+        )
+    except Exception as e:
+        # If Celery/Redis isn't running (e.g., local development), just skip the background task
+        # The rules were still created above, they just won't be applied automatically
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to queue categorization task (Redis/Celery not available): {e}")
