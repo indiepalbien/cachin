@@ -310,10 +310,11 @@
   <!-- Gastos por categoría con carga independiente -->
   <section id="category-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
     <h2 style="margin:0 0 .5rem 0">Gastos por categoría</h2>
-    <div hx-get="{% url 'expenses:api_category_expenses' %}"
+    <div id="category-expenses-section"
+         hx-get="{% url 'expenses:api_category_expenses' %}"
          hx-trigger="load"
          hx-target="this"
-         hx-swap="innerHTML">
+         hx-swap="outerHTML">
       <p style="text-align:center;color:#999">Cargando gastos...</p>
     </div>
   </section>
@@ -321,10 +322,11 @@
   <!-- Gastos por proyecto (total, sin filtro de mes) -->
   <section id="project-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
     <h2 style="margin:0 0 .5rem 0">Gastos por proyecto (Total)</h2>
-    <div hx-get="{% url 'expenses:api_project_expenses' %}"
+    <div id="project-expenses-section"
+         hx-get="{% url 'expenses:api_project_expenses' %}"
          hx-trigger="load"
          hx-target="this"
-         hx-swap="innerHTML">
+         hx-swap="outerHTML">
       <p style="text-align:center;color:#999">Cargando gastos...</p>
     </div>
   </section>
@@ -332,10 +334,11 @@
   <!-- Gastos por origen (mensual, con navegación) -->
   <section id="source-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
     <h2 style="margin:0 0 .5rem 0">Gastos por origen</h2>
-    <div hx-get="{% url 'expenses:api_source_expenses' %}"
+    <div id="source-expenses-section"
+         hx-get="{% url 'expenses:api_source_expenses' %}"
          hx-trigger="load"
          hx-target="this"
-         hx-swap="innerHTML">
+         hx-swap="outerHTML">
       <p style="text-align:center;color:#999">Cargando gastos...</p>
     </div>
   </section>
