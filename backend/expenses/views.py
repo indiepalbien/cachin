@@ -2069,8 +2069,9 @@ def image_process_view(request, session_id):
 @login_required
 def image_results_view(request, session_id):
     """Show processing status and extracted transactions."""
-    from .models import ImageUpload, Source
-    
+    from .models import ImageUpload, Source, Category, Payee
+    from decimal import Decimal
+
     context = _get_onboarding_context(request.user)
     
     images = ImageUpload.objects.filter(
@@ -2111,15 +2112,41 @@ def image_results_view(request, session_id):
     processed_count = images.filter(status='processed').count()
     failed_count = images.filter(status='failed').count()
     
-    # Extract all transactions from processed images
+    # Extract all transactions from processed images with duplicate detection
     all_transactions = []
     for img in images.filter(status='processed', extracted_data__isnull=False):
         extracted = img.extracted_data.get('transactions', [])
         for tx_data in extracted:
             tx_data['image_id'] = img.id
             tx_data['image_filename'] = img.original_filename
+
+            # Check for exact duplicate (date + description + amount + currency)
+            exact_duplicate = Transaction.objects.filter(
+                user=request.user,
+                date=tx_data['date'],
+                description=tx_data['description'],
+                amount=Decimal(str(tx_data['amount'])),
+                currency=tx_data['currency'].upper()
+            ).exists()
+
+            # Check for partial duplicate (date + amount + currency, no description)
+            partial_duplicate = False
+            if not exact_duplicate:
+                partial_duplicate = Transaction.objects.filter(
+                    user=request.user,
+                    date=tx_data['date'],
+                    amount=Decimal(str(tx_data['amount'])),
+                    currency=tx_data['currency'].upper()
+                ).exists()
+
+            tx_data['is_exact_duplicate'] = exact_duplicate
+            tx_data['is_partial_duplicate'] = partial_duplicate
             all_transactions.append(tx_data)
-    
+
+    # Get user categories and payees for autocomplete
+    user_categories = Category.objects.filter(user=request.user).values_list('name', flat=True).distinct()
+    user_payees = Payee.objects.filter(user=request.user).values_list('name', flat=True).distinct()
+
     context.update({
         'session_id': session_id,
         'images': images,
@@ -2130,9 +2157,11 @@ def image_results_view(request, session_id):
         'transactions': all_transactions,
         'is_complete': pending_count == 0 and processing_count == 0,
         'has_failed': failed_count > 0,
-        'sources': Source.objects.filter(user=request.user),
+        'sources': Source.objects.filter(user=request.user).order_by('name'),
+        'user_categories': user_categories,
+        'user_payees': user_payees,
     })
-    
+
     return render(request, 'expenses/image_results.html', context)
 
 
@@ -2196,21 +2225,43 @@ def image_confirm_transactions_view(request, session_id):
                 amount = Decimal(str(tx_data['amount']))
                 if flip_sign:
                     amount = -amount
-                
-                # Check for duplicates (use the potentially flipped amount)
+
+                # Get optional category and payee
+                category_name = request.POST.get(f'category_{idx}', '').strip()
+                payee_name = request.POST.get(f'payee_{idx}', '').strip()
+                notes = request.POST.get(f'notes_{idx}', '').strip()
+
+                # Check for duplicates (use the potentially flipped amount and currency)
                 existing = Transaction.objects.filter(
                     user=request.user,
                     date=tx_data['date'],
                     amount=amount,
-                    description=tx_data['description']
+                    description=tx_data['description'],
+                    currency=tx_data['currency'].upper()
                 ).exists()
-                
+
                 if existing:
                     duplicate_count += 1
                     logger.warning(f"Duplicate transaction from image: {tx_data}")
                     continue
-                
-                # Create transaction with potentially modified amount and currency
+
+                # Get or create category if provided
+                category = None
+                if category_name:
+                    category, _ = Category.objects.get_or_create(
+                        user=request.user,
+                        name=category_name
+                    )
+
+                # Get or create payee if provided
+                payee = None
+                if payee_name:
+                    payee, _ = Payee.objects.get_or_create(
+                        user=request.user,
+                        name=payee_name
+                    )
+
+                # Create transaction with all fields
                 tx = Transaction.objects.create(
                     user=request.user,
                     date=tx_data['date'],
@@ -2218,9 +2269,12 @@ def image_confirm_transactions_view(request, session_id):
                     amount=amount,
                     currency=tx_data['currency'].upper(),
                     source=source,
+                    category=category,
+                    payee=payee,
+                    notes=notes if notes else None,
                     status='confirmed'
                 )
-                
+
                 created_count += 1
         
         if created_count > 0:
@@ -2246,6 +2300,56 @@ def image_confirm_transactions_view(request, session_id):
         logger.error(f"Error confirming transactions from images: {e}", exc_info=True)
         messages.error(request, f'Error al crear transacciones: {str(e)}')
         return redirect('expenses:image_results', session_id=session_id)
+
+
+@login_required
+@require_POST
+def api_check_duplicate(request):
+    """
+    API endpoint to check if a transaction is a duplicate.
+    Returns both exact and partial duplicate status.
+    """
+    import json
+    from decimal import Decimal
+
+    try:
+        data = json.loads(request.body)
+        date = data.get('date')
+        description = data.get('description')
+        amount = Decimal(str(data.get('amount')))
+        currency = data.get('currency', '').upper()
+
+        # Check for exact duplicate (date + description + amount + currency)
+        exact_duplicate = Transaction.objects.filter(
+            user=request.user,
+            date=date,
+            description=description,
+            amount=amount,
+            currency=currency
+        ).exists()
+
+        # Check for partial duplicate (date + amount + currency, no description)
+        partial_duplicate = False
+        if not exact_duplicate:
+            partial_duplicate = Transaction.objects.filter(
+                user=request.user,
+                date=date,
+                amount=amount,
+                currency=currency
+            ).exists()
+
+        return JsonResponse({
+            'is_exact_duplicate': exact_duplicate,
+            'is_partial_duplicate': partial_duplicate
+        })
+
+    except Exception as e:
+        logger.error(f"Error checking duplicate: {e}", exc_info=True)
+        return JsonResponse({
+            'is_exact_duplicate': False,
+            'is_partial_duplicate': False,
+            'error': str(e)
+        }, status=400)
 
 
 @login_required

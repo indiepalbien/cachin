@@ -61,15 +61,38 @@
   <form method="post" action="{% url 'expenses:image_confirm_transactions' session_id %}">
     {% csrf_token %}
 
-    <!-- Source selection -->
-    <div class="mb-4 pb-4 border-b border-slate-200">
-      <label for="source_name" class="block font-bold mb-2 text-base">Fuente de las transacciones:</label>
-      <select name="source_name" id="source_name" class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
-        <option value="image_upload">📷 Imagen (nueva fuente)</option>
-        {% for source in sources %}
-        <option value="{{ source.name }}">{{ source.name }}</option>
-        {% endfor %}
-      </select>
+    <!-- Source and bulk currency selection -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pb-4 border-b-2 border-slate-200">
+      <div>
+        <label for="source_name" class="block font-bold mb-2 text-base">Fuente de las transacciones *</label>
+        <input type="text"
+               name="source_name"
+               id="source_name"
+               list="sourcesList"
+               placeholder="Ej: Tarjeta VISA, Cuenta Corriente..."
+               required
+               class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+        <datalist id="sourcesList">
+          {% for source in sources %}
+          <option value="{{ source.name }}">
+          {% endfor %}
+        </datalist>
+        <small class="block mt-1 text-sm text-slate-600">Selecciona una fuente existente o escribe una nueva</small>
+      </div>
+
+      <div>
+        <label for="bulk_currency" class="block font-bold mb-2 text-base">Aplicar moneda a todas (opcional)</label>
+        <select id="bulk_currency" class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+          <option value="">-- Mantener individual --</option>
+          <option value="USD">USD - Dólar</option>
+          <option value="UYU">UYU - Peso Uruguayo</option>
+          <option value="EUR">EUR - Euro</option>
+          <option value="PEN">PEN - Sol Peruano</option>
+          <option value="ARS">ARS - Peso Argentino</option>
+          <option value="BRL">BRL - Real Brasileño</option>
+        </select>
+        <small class="block mt-1 text-sm text-slate-600">Cambia todas las monedas de una vez</small>
+      </div>
     </div>
 
     <!-- Select all checkbox -->
@@ -81,7 +104,40 @@
     <!-- Transaction cards (similar to transaction list) -->
     <div class="flex flex-col gap-3 mb-4">
       {% for tx in transactions %}
-        <div class="relative p-4 border-3 border-border bg-white rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg">
+        {% if tx.is_exact_duplicate %}
+          {% comment %}Exact duplicate: orange background{% endcomment %}
+          <div class="relative p-4 border-3 border-orange-400 bg-orange-50 rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg"
+               data-index="{{ forloop.counter0 }}"
+               data-date="{{ tx.date }}"
+               data-description="{{ tx.description }}"
+               data-amount="{{ tx.amount }}"
+               data-currency="{{ tx.currency }}">
+            <!-- Duplicate badge -->
+            <div class="absolute top-2 right-2 px-2 py-1 bg-orange-500 text-white text-xs font-bold rounded">
+              ⚠️ Duplicado Exacto
+            </div>
+        {% elif tx.is_partial_duplicate %}
+          {% comment %}Partial duplicate: yellow background{% endcomment %}
+          <div class="relative p-4 border-3 border-yellow-400 bg-yellow-50 rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg"
+               data-index="{{ forloop.counter0 }}"
+               data-date="{{ tx.date }}"
+               data-description="{{ tx.description }}"
+               data-amount="{{ tx.amount }}"
+               data-currency="{{ tx.currency }}">
+            <!-- Duplicate badge -->
+            <div class="absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs font-bold rounded">
+              ⚠️ Posible Duplicado
+            </div>
+        {% else %}
+          {% comment %}Not a duplicate: white background{% endcomment %}
+          <div class="relative p-4 border-3 border-border bg-white rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg"
+               data-index="{{ forloop.counter0 }}"
+               data-date="{{ tx.date }}"
+               data-description="{{ tx.description }}"
+               data-amount="{{ tx.amount }}"
+               data-currency="{{ tx.currency }}">
+        {% endif %}
+
           <!-- Header: Checkbox, Date, Description, Amount -->
           <div class="flex flex-wrap md:flex-nowrap items-start gap-3 mb-3 pb-3 border-b-2 border-slate-100">
             <!-- Checkbox -->
@@ -90,7 +146,7 @@
                      name="selected_transactions"
                      value="{{ forloop.counter0 }}"
                      class="transaction-checkbox w-5 h-5 border-2 border-border cursor-pointer"
-                     checked>
+                     {% if not tx.is_exact_duplicate %}checked{% endif %}>
             </div>
 
             <!-- Date -->
@@ -109,11 +165,13 @@
             </div>
           </div>
 
-          <!-- Controls: Currency and Flip Sign in 2 columns -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <!-- Controls: 3 columns on desktop, 1 on mobile -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <div class="flex flex-col gap-1">
               <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">💰 Moneda</label>
-              <select name="currency_{{ forloop.counter0 }}" class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all cursor-pointer hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+              <select name="currency_{{ forloop.counter0 }}"
+                      class="currency-select w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all cursor-pointer hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]"
+                      data-index="{{ forloop.counter0 }}">
                 <option value="USD" {% if tx.currency == 'USD' %}selected{% endif %}>USD - Dólar</option>
                 <option value="UYU" {% if tx.currency == 'UYU' %}selected{% endif %}>UYU - Peso Uruguayo</option>
                 <option value="EUR" {% if tx.currency == 'EUR' %}selected{% endif %}>EUR - Euro</option>
@@ -121,6 +179,35 @@
                 <option value="ARS" {% if tx.currency == 'ARS' %}selected{% endif %}>ARS - Peso Argentino</option>
                 <option value="BRL" {% if tx.currency == 'BRL' %}selected{% endif %}>BRL - Real Brasileño</option>
               </select>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">📁 Categoría</label>
+              <input type="text"
+                     name="category_{{ forloop.counter0 }}"
+                     list="categoriesList"
+                     placeholder="Categoría..."
+                     class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">👤 Beneficiario</label>
+              <input type="text"
+                     name="payee_{{ forloop.counter0 }}"
+                     list="payeesList"
+                     placeholder="Beneficiario..."
+                     class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+            </div>
+          </div>
+
+          <!-- Notes and Flip Sign row -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">📝 Notas</label>
+              <input type="text"
+                     name="notes_{{ forloop.counter0 }}"
+                     placeholder="Notas adicionales..."
+                     class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
             </div>
 
             <div class="flex flex-col gap-1 justify-end">
@@ -162,6 +249,19 @@
   <p class="text-center text-slate-500 text-sm mt-3">Esta acción eliminará todas las imágenes y datos de esta sesión.</p>
 </section>
 
+<!-- Datalists for autocomplete -->
+<datalist id="categoriesList">
+  {% for category in user_categories %}
+  <option value="{{ category }}">
+  {% endfor %}
+</datalist>
+
+<datalist id="payeesList">
+  {% for payee in user_payees %}
+  <option value="{{ payee }}">
+  {% endfor %}
+</datalist>
+
 {% elif is_complete %}
 <div class="p-4 bg-yellow-100 border-2 border-yellow-300 rounded">
   ⚠️ No se encontraron transacciones en las imágenes procesadas.
@@ -190,6 +290,102 @@ setTimeout(function() {
     location.reload();
 }, 5000);  // Refresh every 5 seconds
 {% endif %}
+
+// Store all existing transactions for duplicate checking
+const existingTransactions = {{ transactions|safe|default:"[]" }};
+
+// Function to check for duplicates via AJAX
+async function checkDuplicate(date, description, amount, currency) {
+    try {
+        const response = await fetch('{% url "expenses:api_check_duplicate" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                date: date,
+                description: description,
+                amount: amount,
+                currency: currency
+            })
+        });
+        const data = await response.json();
+        return {
+            exact: data.is_exact_duplicate || false,
+            partial: data.is_partial_duplicate || false
+        };
+    } catch (error) {
+        console.error('Error checking duplicate:', error);
+        return { exact: false, partial: false };
+    }
+}
+
+// Function to update card styling based on duplicate status
+function updateCardDuplicateStatus(card, isExact, isPartial) {
+    const badge = card.querySelector('.absolute.top-2.right-2');
+
+    // Remove existing duplicate classes
+    card.classList.remove('bg-orange-50', 'border-orange-400', 'bg-yellow-50', 'border-yellow-400', 'bg-white', 'border-border');
+
+    if (isExact) {
+        card.classList.add('bg-orange-50', 'border-orange-400');
+        if (badge) {
+            badge.className = 'absolute top-2 right-2 px-2 py-1 bg-orange-500 text-white text-xs font-bold rounded';
+            badge.textContent = '⚠️ Duplicado Exacto';
+        } else {
+            card.insertAdjacentHTML('afterbegin', '<div class="absolute top-2 right-2 px-2 py-1 bg-orange-500 text-white text-xs font-bold rounded">⚠️ Duplicado Exacto</div>');
+        }
+        // Uncheck exact duplicates by default
+        const checkbox = card.querySelector('.transaction-checkbox');
+        if (checkbox) checkbox.checked = false;
+    } else if (isPartial) {
+        card.classList.add('bg-yellow-50', 'border-yellow-400');
+        if (badge) {
+            badge.className = 'absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs font-bold rounded';
+            badge.textContent = '⚠️ Posible Duplicado';
+        } else {
+            card.insertAdjacentHTML('afterbegin', '<div class="absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs font-bold rounded">⚠️ Posible Duplicado</div>');
+        }
+    } else {
+        card.classList.add('bg-white', 'border-border');
+        if (badge) {
+            badge.remove();
+        }
+    }
+}
+
+// Bulk currency change
+document.getElementById('bulk_currency')?.addEventListener('change', function(e) {
+    const newCurrency = e.target.value;
+    if (!newCurrency) return;
+
+    const currencySelects = document.querySelectorAll('.currency-select');
+    currencySelects.forEach(select => {
+        select.value = newCurrency;
+        // Trigger change event to update duplicate detection
+        select.dispatchEvent(new Event('change'));
+    });
+});
+
+// Individual currency change with duplicate detection
+document.querySelectorAll('.currency-select').forEach(select => {
+    select.addEventListener('change', async function() {
+        const index = this.dataset.index;
+        const card = this.closest('[data-index]');
+        const date = card.dataset.date;
+        const description = card.dataset.description;
+        const amount = parseFloat(card.dataset.amount);
+        const newCurrency = this.value;
+
+        // Update data attribute
+        card.dataset.currency = newCurrency;
+
+        // Check for duplicates with new currency
+        const duplicateStatus = await checkDuplicate(date, description, amount, newCurrency);
+        updateCardDuplicateStatus(card, duplicateStatus.exact, duplicateStatus.partial);
+    });
+});
 
 // Select all checkbox
 document.getElementById('selectAll')?.addEventListener('change', function(e) {
