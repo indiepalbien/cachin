@@ -85,6 +85,17 @@
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-eye"></i> Ver
                                         </a>
+
+                                        {% if session.status != 'completed' %}
+                                        <form method="post" action="{% url 'expenses:image_reject' session.session_id %}"
+                                              style="display: inline;"
+                                              onsubmit="return confirm('¿Descartar esta sesión de subida?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Descartar sesión">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}

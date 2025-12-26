@@ -2237,7 +2237,7 @@ def image_confirm_transactions_view(request, session_id):
 def my_uploads_view(request):
     """Show user's recent upload sessions for recovery."""
     from .models import ImageUpload
-    from django.db.models import Count, Max, Min
+    from django.db.models import Count, Max, Min, Q
 
     context = _get_onboarding_context(request.user)
 
@@ -2255,10 +2255,10 @@ def my_uploads_view(request):
         image_count=Count('id'),
         first_upload=Min('uploaded_at'),
         last_updated=Max('uploaded_at'),
-        pending_count=Count('id', filter=models.Q(status='pending')),
-        processing_count=Count('id', filter=models.Q(status='processing')),
-        processed_count=Count('id', filter=models.Q(status='processed')),
-        failed_count=Count('id', filter=models.Q(status='failed'))
+        pending_count=Count('id', filter=Q(status='pending')),
+        processing_count=Count('id', filter=Q(status='processing')),
+        processed_count=Count('id', filter=Q(status='processed')),
+        failed_count=Count('id', filter=Q(status='failed'))
     ).order_by('-last_updated')
 
     # Add session status for each
@@ -2331,4 +2331,46 @@ def retry_processing_view(request, session_id):
     except Exception as e:
         logger.error(f"Error retrying processing for session {session_id}: {e}", exc_info=True)
         messages.error(request, f'Error al reintentar: {str(e)}')
+        return redirect('expenses:image_results', session_id=session_id)
+
+
+@login_required
+@require_POST
+def reject_session_view(request, session_id):
+    """Reject/discard all images in an upload session."""
+    from .models import ImageUpload
+
+    try:
+        images = ImageUpload.objects.filter(
+            user=request.user,
+            session_id=session_id
+        )
+
+        if not images.exists():
+            messages.warning(request, 'No se encontraron imágenes para esta sesión.')
+            return redirect('expenses:image_upload')
+
+        # Delete uploaded files from storage
+        for img in images:
+            if img.image:
+                try:
+                    img.image.delete(save=False)
+                except Exception as e:
+                    logger.warning(f"Failed to delete image file {img.id}: {e}")
+
+        # Delete database records
+        count = images.count()
+        images.delete()
+
+        messages.success(
+            request,
+            f'Se descartaron {count} imagen(es) y sus datos extraídos.'
+        )
+        logger.info(f"User {request.user.id} rejected session {session_id}, {count} images deleted")
+
+        return redirect('expenses:image_upload')
+
+    except Exception as e:
+        logger.error(f"Error rejecting session {session_id}: {e}", exc_info=True)
+        messages.error(request, f'Error al rechazar sesión: {str(e)}')
         return redirect('expenses:image_results', session_id=session_id)

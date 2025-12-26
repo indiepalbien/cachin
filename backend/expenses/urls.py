@@ -77,4 +77,5 @@ urlpatterns = [
     path("image-confirm/<str:session_id>/", views.image_confirm_transactions_view, name="image_confirm_transactions"),
     path("my-uploads/", views.my_uploads_view, name="my_uploads"),
     path("image-retry/<str:session_id>/", views.retry_processing_view, name="image_retry"),
+    path("image-reject/<str:session_id>/", views.reject_session_view, name="image_reject"),
 ]

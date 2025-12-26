@@ -142,6 +142,18 @@
                             </button>
                         </div>
                     </form>
+
+                    <!-- Reject session button -->
+                    <div class="mt-3 text-center">
+                        <form method="post" action="{% url 'expenses:image_reject' session_id %}"
+                              onsubmit="return confirm('¿Estás seguro de que deseas descartar todas las imágenes y transacciones extraídas? Esta acción no se puede deshacer.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="bi bi-trash"></i> Descartar Todo
+                            </button>
+                        </form>
+                        <small class="text-muted">Esta acción eliminará todas las imágenes y datos de esta sesión.</small>
+                    </div>
                 </div>
             </div>
             {% elif is_complete %}
