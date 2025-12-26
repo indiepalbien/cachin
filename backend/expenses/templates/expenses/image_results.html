@@ -4,197 +4,184 @@
 {% block title %}Resultados del Procesamiento{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-10 mx-auto">
-            <!-- Status card -->
-            <div class="card shadow mb-3">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">
-                        <i class="bi bi-check-circle"></i>
-                        Estado del Procesamiento
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-6 col-md-3 mb-2">
-                            <div class="h3 mb-0">{{ processed_count }}</div>
-                            <small class="text-success">Procesadas</small>
-                        </div>
-                        <div class="col-6 col-md-3 mb-2">
-                            <div class="h3 mb-0">{{ processing_count }}</div>
-                            <small class="text-info">Procesando</small>
-                        </div>
-                        <div class="col-6 col-md-3 mb-2">
-                            <div class="h3 mb-0">{{ pending_count }}</div>
-                            <small class="text-warning">Pendientes</small>
-                        </div>
-                        <div class="col-6 col-md-3 mb-2">
-                            <div class="h3 mb-0">{{ failed_count }}</div>
-                            <small class="text-danger">Errores</small>
-                        </div>
-                    </div>
+<p><a href="{% url 'expenses:my_uploads' %}" class="text-accent font-bold hover:underline">← Volver a Mis Subidas</a></p>
+<h1 class="text-2xl md:text-3xl font-extrabold mb-4">Resultados del Procesamiento</h1>
 
-                    {% if has_failed %}
-                    <div class="mt-3">
-                        <form method="post" action="{% url 'expenses:image_retry' session_id %}" style="display: inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-warning">
-                                <i class="bi bi-arrow-clockwise"></i> Reintentar Procesamiento
-                            </button>
-                        </form>
-                        <small class="text-muted ms-2">
-                            Se reintentarán las imágenes que fallaron o excedieron el tiempo límite.
-                        </small>
-                    </div>
-                    {% endif %}
-
-                    {% if not is_complete %}
-                    <div class="alert alert-info mt-3 mb-0">
-                        <i class="bi bi-hourglass-split"></i>
-                        El procesamiento está en curso. Esta página se actualizará automáticamente.
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Transactions found -->
-            {% if transactions %}
-            <div class="card shadow">
-                <div class="card-header bg-success text-white">
-                    <h4 class="mb-0">
-                        <i class="bi bi-receipt"></i>
-                        Transacciones Encontradas ({{ transactions|length }})
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted">
-                        Selecciona las transacciones que deseas agregar. Verifica que la información sea correcta.
-                    </p>
-
-                    <form method="post" action="{% url 'expenses:image_confirm_transactions' session_id %}">
-                        {% csrf_token %}
-                        
-                        <div class="mb-3">
-                            <label for="source_name" class="form-label">Fuente de las transacciones:</label>
-                            <select name="source_name" id="source_name" class="form-select">
-                                <option value="image_upload">📷 Imagen (nueva fuente)</option>
-                                {% for source in sources %}
-                                <option value="{{ source.name }}">{{ source.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>
-                                            <input type="checkbox" id="selectAll" class="form-check-input">
-                                        </th>
-                                        <th>Fecha</th>
-                                        <th>Descripción</th>
-                                        <th>Monto</th>
-                                        <th>Moneda</th>
-                                        <th>Invertir signo</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for tx in transactions %}
-                                    <tr>
-                                        <td>
-                                            <input type="checkbox" 
-                                                   name="selected_transactions" 
-                                                   value="{{ forloop.counter0 }}"
-                                                   class="form-check-input transaction-checkbox"
-                                                   checked>
-                                        </td>
-                                        <td>{{ tx.date }}</td>
-                                        <td>{{ tx.description }}</td>
-                                        <td>
-                                            <strong id="amount-{{ forloop.counter0 }}">{{ tx.amount }}</strong>
-                                        </td>
-                                        <td>
-                                            <select name="currency_{{ forloop.counter0 }}" class="form-select form-select-sm">
-                                                <option value="USD" {% if tx.currency == 'USD' %}selected{% endif %}>USD</option>
-                                                <option value="PEN" {% if tx.currency == 'PEN' %}selected{% endif %}>PEN</option>
-                                                <option value="UYU" {% if tx.currency == 'UYU' %}selected{% endif %}>UYU</option>
-                                                <option value="EUR" {% if tx.currency == 'EUR' %}selected{% endif %}>EUR</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <input type="checkbox" 
-                                                   name="flip_{{ forloop.counter0 }}"
-                                                   class="form-check-input flip-sign-checkbox"
-                                                   data-index="{{ forloop.counter0 }}"
-                                                   data-original-amount="{{ tx.amount }}">
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="d-grid gap-2 mt-3">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check-circle"></i>
-                                Confirmar y Agregar Transacciones Seleccionadas
-                            </button>
-                        </div>
-                    </form>
-
-                    <!-- Reject session button -->
-                    <div class="mt-3 text-center">
-                        <form method="post" action="{% url 'expenses:image_reject' session_id %}"
-                              onsubmit="return confirm('¿Estás seguro de que deseas descartar todas las imágenes y transacciones extraídas? Esta acción no se puede deshacer.');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-danger">
-                                <i class="bi bi-trash"></i> Descartar Todo
-                            </button>
-                        </form>
-                        <small class="text-muted">Esta acción eliminará todas las imágenes y datos de esta sesión.</small>
-                    </div>
-                </div>
-            </div>
-            {% elif is_complete %}
-            <div class="alert alert-warning">
-                <i class="bi bi-exclamation-triangle"></i>
-                No se encontraron transacciones en las imágenes procesadas.
-            </div>
-            {% endif %}
-
-            <!-- Failed images -->
-            {% if failed_count > 0 %}
-            <div class="card shadow mt-3">
-                <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-exclamation-circle"></i>
-                        Imágenes con Errores
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% for image in images %}
-                        {% if image.status == 'failed' %}
-                        <div class="alert alert-danger">
-                            <strong>{{ image.original_filename }}</strong><br>
-                            {{ image.processing_error }}
-                        </div>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Navigation -->
-            <div class="mt-3">
-                <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i>
-                    Volver al Inicio
-                </a>
-            </div>
-        </div>
+<!-- Status card -->
+<section class="my-4 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal">
+  <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold">Estado del Procesamiento</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+    <div>
+      <div class="text-3xl font-extrabold mb-1">{{ processed_count }}</div>
+      <small class="text-green-600 font-semibold">Procesadas</small>
     </div>
+    <div>
+      <div class="text-3xl font-extrabold mb-1">{{ processing_count }}</div>
+      <small class="text-blue-600 font-semibold">Procesando</small>
+    </div>
+    <div>
+      <div class="text-3xl font-extrabold mb-1">{{ pending_count }}</div>
+      <small class="text-yellow-600 font-semibold">Pendientes</small>
+    </div>
+    <div>
+      <div class="text-3xl font-extrabold mb-1">{{ failed_count }}</div>
+      <small class="text-red-600 font-semibold">Errores</small>
+    </div>
+  </div>
+
+  {% if has_failed %}
+  <div class="mt-4 pt-3 border-t border-slate-200">
+    <form method="post" action="{% url 'expenses:image_retry' session_id %}" class="inline">
+      {% csrf_token %}
+      <button type="submit" class="bg-yellow-500 text-white px-4 py-2 border-0 rounded font-bold cursor-pointer transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">
+        🔄 Reintentar Procesamiento
+      </button>
+    </form>
+    <small class="text-slate-600 ml-2">
+      Se reintentarán las imágenes que fallaron.
+    </small>
+  </div>
+  {% endif %}
+
+  {% if not is_complete %}
+  <div class="mt-4 p-3 bg-blue-100 border-2 border-blue-300 rounded">
+    ⏳ El procesamiento está en curso. Esta página se actualizará automáticamente.
+  </div>
+  {% endif %}
+</section>
+
+<!-- Transactions found -->
+{% if transactions %}
+<section class="my-4 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal">
+  <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold">Transacciones Encontradas ({{ transactions|length }})</h2>
+  <p class="text-slate-600 mb-4">
+    Selecciona las transacciones que deseas agregar. Verifica que la información sea correcta.
+  </p>
+
+  <form method="post" action="{% url 'expenses:image_confirm_transactions' session_id %}">
+    {% csrf_token %}
+
+    <!-- Source selection -->
+    <div class="mb-4 pb-4 border-b border-slate-200">
+      <label for="source_name" class="block font-bold mb-2 text-base">Fuente de las transacciones:</label>
+      <select name="source_name" id="source_name" class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+        <option value="image_upload">📷 Imagen (nueva fuente)</option>
+        {% for source in sources %}
+        <option value="{{ source.name }}">{{ source.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Select all checkbox -->
+    <div class="mb-3 flex items-center gap-2">
+      <input type="checkbox" id="selectAll" class="w-5 h-5 border-2 border-border cursor-pointer">
+      <label for="selectAll" class="font-semibold cursor-pointer">Seleccionar todas</label>
+    </div>
+
+    <!-- Transaction cards (similar to transaction list) -->
+    <div class="flex flex-col gap-3 mb-4">
+      {% for tx in transactions %}
+        <div class="relative p-4 border-3 border-border bg-white rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg">
+          <!-- Header: Checkbox, Date, Description, Amount -->
+          <div class="flex flex-wrap md:flex-nowrap items-start gap-3 mb-3 pb-3 border-b-2 border-slate-100">
+            <!-- Checkbox -->
+            <div class="shrink-0 flex items-center">
+              <input type="checkbox"
+                     name="selected_transactions"
+                     value="{{ forloop.counter0 }}"
+                     class="transaction-checkbox w-5 h-5 border-2 border-border cursor-pointer"
+                     checked>
+            </div>
+
+            <!-- Date -->
+            <div class="text-sm font-semibold text-slate-500 shrink-0 w-full md:w-auto order-1">
+              {{ tx.date }}
+            </div>
+
+            <!-- Amount on mobile, right side on desktop -->
+            <div class="font-extrabold text-lg whitespace-nowrap text-muted px-3 py-1 bg-slate-100 rounded shrink-0 ml-auto md:ml-0 order-2 md:order-3">
+              <span id="amount-{{ forloop.counter0 }}">{{ tx.amount }}</span>
+            </div>
+
+            <!-- Description - full width on mobile, flex-1 on desktop -->
+            <div class="w-full md:flex-1 font-semibold text-base text-muted leading-snug break-words order-3 md:order-2">
+              {{ tx.description }}
+            </div>
+          </div>
+
+          <!-- Controls: Currency and Flip Sign in 2 columns -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">💰 Moneda</label>
+              <select name="currency_{{ forloop.counter0 }}" class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all cursor-pointer hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+                <option value="USD" {% if tx.currency == 'USD' %}selected{% endif %}>USD - Dólar</option>
+                <option value="UYU" {% if tx.currency == 'UYU' %}selected{% endif %}>UYU - Peso Uruguayo</option>
+                <option value="EUR" {% if tx.currency == 'EUR' %}selected{% endif %}>EUR - Euro</option>
+                <option value="PEN" {% if tx.currency == 'PEN' %}selected{% endif %}>PEN - Sol Peruano</option>
+                <option value="ARS" {% if tx.currency == 'ARS' %}selected{% endif %}>ARS - Peso Argentino</option>
+                <option value="BRL" {% if tx.currency == 'BRL' %}selected{% endif %}>BRL - Real Brasileño</option>
+              </select>
+            </div>
+
+            <div class="flex flex-col gap-1 justify-end">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">🔄 Cambiar Signo</label>
+              <label class="flex items-center gap-3 px-3 py-2 border-2 border-slate-300 rounded bg-slate-50 hover:bg-slate-100 cursor-pointer min-h-[44px] transition-colors">
+                <input type="checkbox"
+                       name="flip_{{ forloop.counter0 }}"
+                       class="flip-sign-checkbox w-5 h-5 border-2 border-border cursor-pointer"
+                       data-index="{{ forloop.counter0 }}"
+                       data-original-amount="{{ tx.amount }}">
+                <span class="text-sm font-semibold">Invertir signo del monto</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Submit button -->
+    <div class="flex flex-col gap-3 mt-4">
+      <button type="submit" class="w-full bg-accent text-white px-4 py-3 border-0 rounded font-extrabold cursor-pointer text-base transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">
+        ✓ Confirmar y Agregar Transacciones Seleccionadas
+      </button>
+
+      <!-- Reject session button -->
+      <button type="button"
+              onclick="if(confirm('¿Estás seguro de que deseas descartar todas las imágenes y transacciones extraídas? Esta acción no se puede deshacer.')) { document.getElementById('rejectForm').submit(); }"
+              class="w-full bg-slate-200 text-slate-700 px-4 py-3 border-2 border-slate-300 rounded font-bold cursor-pointer transition-all hover:bg-red-100 hover:text-red-700 hover:border-red-300 min-h-[44px]">
+        🗑️ Descartar Todo
+      </button>
+    </div>
+  </form>
+
+  <!-- Hidden reject form -->
+  <form method="post" action="{% url 'expenses:image_reject' session_id %}" id="rejectForm" class="hidden">
+    {% csrf_token %}
+  </form>
+
+  <p class="text-center text-slate-500 text-sm mt-3">Esta acción eliminará todas las imágenes y datos de esta sesión.</p>
+</section>
+
+{% elif is_complete %}
+<div class="p-4 bg-yellow-100 border-2 border-yellow-300 rounded">
+  ⚠️ No se encontraron transacciones en las imágenes procesadas.
 </div>
+{% endif %}
+
+<!-- Failed images -->
+{% if failed_count > 0 %}
+<section class="my-4 p-3 md:p-4 border-3 border-red-500 bg-panel rounded shadow-brutal">
+  <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold text-red-600">Imágenes con Errores</h2>
+  {% for image in images %}
+    {% if image.status == 'failed' %}
+    <div class="p-3 mb-2 bg-red-100 border-2 border-red-300 rounded">
+      <strong class="block mb-1">{{ image.original_filename }}</strong>
+      <span class="text-sm text-red-700">{{ image.processing_error }}</span>
+    </div>
+    {% endif %}
+  {% endfor %}
+</section>
+{% endif %}
 
 <script>
 // Auto-refresh if processing is not complete
@@ -216,7 +203,7 @@ document.querySelectorAll('.flip-sign-checkbox').forEach(checkbox => {
         const index = this.dataset.index;
         const amountElement = document.getElementById('amount-' + index);
         const originalAmount = parseFloat(this.dataset.originalAmount);
-        
+
         if (this.checked) {
             amountElement.textContent = (-originalAmount).toFixed(2);
         } else {
@@ -224,19 +211,6 @@ document.querySelectorAll('.flip-sign-checkbox').forEach(checkbox => {
         }
     });
 });
-});
 </script>
 
-<style>
-@media (max-width: 768px) {
-    .card {
-        margin: 0 -15px;
-        border-radius: 0;
-    }
-    
-    .table {
-        font-size: 0.85rem;
-    }
-}
-</style>
 {% endblock %}

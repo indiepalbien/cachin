@@ -974,7 +974,22 @@ def register(request):
 
 
 def landing(request):
-    """Simple landing page at root ('/')."""
+    """
+    Landing page at root ('/').
+
+    If user is authenticated and has completed onboarding, redirect to dashboard.
+    Otherwise, show the landing page.
+    """
+    if request.user.is_authenticated:
+        try:
+            profile = request.user.profile
+            # If onboarding is complete (step 0), redirect to dashboard
+            if profile.onboarding_step == 0:
+                return redirect('profile')
+        except UserProfile.DoesNotExist:
+            # If profile doesn't exist, let middleware handle it
+            pass
+
     return render(request, 'landing.html')
 
 

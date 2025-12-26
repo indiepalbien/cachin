@@ -18,5 +18,5 @@ media/
 node_modules/
 package-lock.json
 
-# Generated CSS (built by Tailwind)
-backend/expenses/static/expenses/output.css
+# Generated CSS (built by Tailwind) - commented out so it's committed for production
+# backend/expenses/static/expenses/output.css

@@ -3,194 +3,76 @@
 {% block title %}Importar Transacciones — App-Finanzas{% endblock %}
 
 {% block content %}
-<style>
-    /* Bulk import specific styles matching neo-brutalist theme */
-    .bulk-section {
-        margin: 1.5rem 0;
-        padding: 1rem;
-        border: 4px solid var(--border);
-        background: var(--panel);
-    }
-    .bulk-form-group {
-        margin-bottom: 1rem;
-    }
-    .bulk-form-group label {
-        display: block;
-        font-weight: 700;
-        margin-bottom: 0.4rem;
-        color: var(--muted);
-    }
-    .bulk-form-group select,
-    .bulk-form-group textarea,
-    .bulk-form-group input {
-        width: 100%;
-        padding: 0.6rem;
-        font-family: inherit;
-        border: 3px solid var(--border);
-        background: #fff;
-        box-sizing: border-box;
-    }
-    .bulk-form-group textarea {
-        min-height: 150px;
-        font-size: 0.85rem;
-    }
-    .bulk-form-group small {
-        display: block;
-        margin-top: 0.3rem;
-        color: var(--muted);
-        opacity: 0.7;
-    }
-    .bulk-btn {
-        padding: 0.7rem 1.2rem;
-        font-weight: 800;
-        border: 3px solid var(--border);
-        background: var(--accent);
-        color: #fff;
-        cursor: pointer;
-        font-family: inherit;
-        margin-right: 0.5rem;
-        display: inline-block;
-        text-decoration: none;
-    }
-    .bulk-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 4px 4px 0 var(--border);
-    }
-    .bulk-btn-secondary {
-        background: var(--panel);
-        color: var(--muted);
-    }
-    .bulk-btn-success {
-        background: #10b981;
-    }
-    .bulk-alert {
-        padding: 0.8rem;
-        margin: 1rem 0;
-        border: 3px solid var(--border);
-        border-left-width: 6px;
-    }
-    .bulk-alert-info {
-        background: #dbeafe;
-        border-left-color: #3b82f6;
-    }
-    .bulk-alert-warning {
-        background: #fef3c7;
-        border-left-color: #f59e0b;
-    }
-    .bulk-alert-danger {
-        background: #fee2e2;
-        border-left-color: #ef4444;
-    }
-    .bulk-alert-success {
-        background: #d1fae5;
-        border-left-color: #10b981;
-    }
-    .bulk-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 1rem 0;
-        border: 3px solid var(--border);
-    }
-    .bulk-table thead {
-        background: var(--muted);
-        color: #fff;
-    }
-    .bulk-table th,
-    .bulk-table td {
-        padding: 0.6rem;
-        border: 2px solid var(--border);
-        text-align: left;
-    }
-    .bulk-table tbody tr:nth-child(even) {
-        background: #f9fafb;
-    }
-    .bulk-table input[type="text"],
-    .bulk-table input[type="checkbox"] {
-        font-family: inherit;
-    }
-    .bulk-table input[type="text"] {
-        padding: 0.4rem;
-        border: 2px solid var(--border);
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .bulk-row-duplicate {
-        background-color: rgba(255, 193, 7, 0.15) !important;
-    }
-    .bulk-grid-2col {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-    @media (max-width: 768px) {
-        .bulk-grid-2col {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-
-<h1>📋 Importar Transacciones</h1>
-<p style="margin: 0.5rem 0 1.5rem 0; opacity: 0.8;">
+<h1 class="text-2xl md:text-3xl font-extrabold mb-2">📋 Importar Transacciones</h1>
+<p class="text-slate-600 mb-6">
     Copia y pega datos desde tu banco para importar múltiples transacciones a la vez.
 </p>
 
-<section class="bulk-section">
+<section class="my-6 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal">
     <form id="bulkImportForm" method="post" action="{% url 'expenses:bulk_parse' %}">
         {% csrf_token %}
-        
-        <div class="bulk-grid-2col">
-            <div class="bulk-form-group">
-                <label for="bank">Banco *</label>
-                <select name="bank" id="bank" required>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="mb-4">
+                <label for="bank" class="block font-bold mb-2 text-base">Banco *</label>
+                <select name="bank" id="bank" required class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
                     <option value="">--- Selecciona un banco ---</option>
                     {% for code, name in banks.items %}
                     <option value="{{ code }}">{{ name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            
-            <div class="bulk-form-group" id="currencyContainer" style="display: none;">
-                <label for="currency">Moneda</label>
-                <select name="currency" id="currency">
+
+            <div class="mb-4 hidden" id="currencyContainer">
+                <label for="currency" class="block font-bold mb-2 text-base">Moneda</label>
+                <select name="currency" id="currency" class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
                     <option value="">--- Selecciona moneda ---</option>
                     <option value="UYU">UYU - Peso Uruguayo</option>
                     <option value="USD">USD - Dólar</option>
                 </select>
             </div>
-            
-            <div class="bulk-form-group">
-                <label for="source">Fuente *</label>
-                <input type="text" 
-                       name="source" 
-                       id="source" 
+
+            <div class="mb-4">
+                <label for="source" class="block font-bold mb-2 text-base">Fuente *</label>
+                <input type="text"
+                       name="source"
+                       id="source"
                        list="sourcesList"
                        placeholder="Ej: Scotia 1234, ITAU Débito..."
-                       required>
-                <small>Selecciona una fuente existente o escribe una nueva. Esta fuente se aplicará a todas las transacciones.</small>
+                       required
+                       class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+                <small class="block mt-1 text-sm text-slate-600">Selecciona una fuente existente o escribe una nueva. Esta fuente se aplicará a todas las transacciones.</small>
             </div>
         </div>
-        
+
         <!-- Datalist for sources -->
         <datalist id="sourcesList">
             {% for source in user_sources %}
             <option value="{{ source }}">
             {% endfor %}
         </datalist>
-        
-        <div class="bulk-form-group">
-            <label for="rawText">Datos de Transacciones *</label>
-            <textarea name="raw_text" id="rawText" rows="10" 
+
+        <div class="mb-4">
+            <label for="rawText" class="block font-bold mb-2 text-base">Datos de Transacciones *</label>
+            <textarea name="raw_text" id="rawText" rows="10"
                       placeholder="Pega aquí los datos copiados de tu banco (columnas separadas por tabulación)..."
-                      required></textarea>
-            <small>Los datos deben estar separados por tabulaciones. Cada fila representa una transacción.</small>
+                      required
+                      class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 font-mono text-sm"></textarea>
+            <small class="block mt-1 text-sm text-slate-600">Los datos deben estar separados por tabulaciones. Cada fila representa una transacción.</small>
         </div>
-        
-        <button type="button" class="bulk-btn" id="processBtn" onclick="processData()">
-            Procesar Datos
-        </button>
-        <a href="{% url 'profile' %}" class="bulk-btn bulk-btn-secondary">
-            Cancelar
-        </a>
+
+        <div class="flex flex-wrap gap-3">
+            <button type="button"
+                    class="bg-accent text-white px-4 py-3 border-0 rounded font-extrabold cursor-pointer text-base transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]"
+                    id="processBtn"
+                    onclick="processData()">
+                Procesar Datos
+            </button>
+            <a href="{% url 'profile' %}"
+               class="bg-slate-200 text-slate-700 px-4 py-3 border-2 border-slate-300 rounded font-bold cursor-pointer transition-all hover:bg-slate-300 min-h-[44px] inline-flex items-center no-underline">
+                Cancelar
+            </a>
+        </div>
     </form>
 </section>
 
@@ -208,50 +90,40 @@
 </datalist>
 
 <!-- Preview Section (hidden until data is processed) -->
-<section id="previewSection" class="bulk-section" style="display: none; margin-top: 2rem;">
-    <h2 style="margin: 0 0 1rem 0;">Vista Previa</h2>
-    
+<section id="previewSection" class="my-6 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal hidden">
+    <h2 class="text-xl md:text-2xl font-extrabold mb-4">Vista Previa</h2>
+
     <!-- Errors/Warnings -->
     <div id="errorsContainer"></div>
-    
+
     <!-- Summary -->
-    <div class="bulk-alert bulk-alert-info" id="summaryAlert" style="display: none;">
-        <strong id="summaryText"></strong>
+    <div class="p-4 mb-4 bg-blue-100 border-l-4 border-blue-500 hidden" id="summaryAlert">
+        <strong id="summaryText" class="text-slate-700"></strong>
     </div>
-    
-    <!-- Transactions Table -->
-    <div id="tableContainer" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h3 style="margin: 0;">Transacciones (<span id="transactionCount">0</span>)</h3>
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
-                <span>Seleccionar todas</span>
+
+    <!-- Transactions Cards -->
+    <div id="tableContainer" class="hidden">
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+            <h3 class="text-lg md:text-xl font-extrabold m-0">Transacciones (<span id="transactionCount">0</span>)</h3>
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="w-5 h-5 border-2 border-border cursor-pointer">
+                <span class="font-semibold">Seleccionar todas</span>
             </label>
         </div>
-        
-        <div style="overflow-x: auto;">
-            <table class="bulk-table" id="previewTable">
-                <thead class="table-dark">
-                    <tr>
-                        <th style="width: 40px;"><input type="checkbox" class="form-check-input"></th>
-                        <th style="width: 100px;">Date</th>
-                        <th>Description</th>
-                        <th style="width: 100px;">Amount</th>
-                        <th style="width: 60px;">Currency</th>
-                        <th style="width: 150px;">Category</th>
-                        <th style="width: 150px;">Payee</th>
-                        <th style="width: 100px;">Status</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-        </div>
-        
-        <div style="margin-top: 1.5rem;">
-            <button type="button" class="bulk-btn bulk-btn-success" id="confirmBtn" onclick="confirmTransactions()">
+
+        <!-- Card list instead of table -->
+        <div id="tableBody" class="flex flex-col gap-3 mb-4"></div>
+
+        <div class="flex flex-wrap gap-3 mt-6">
+            <button type="button"
+                    class="bg-green-500 text-white px-4 py-3 border-0 rounded font-extrabold cursor-pointer text-base transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]"
+                    id="confirmBtn"
+                    onclick="confirmTransactions()">
                 ✓ Agregar Seleccionadas
             </button>
-            <button type="button" class="bulk-btn bulk-btn-secondary" onclick="resetForm()">
+            <button type="button"
+                    class="bg-slate-200 text-slate-700 px-4 py-3 border-2 border-slate-300 rounded font-bold cursor-pointer transition-all hover:bg-slate-300 min-h-[44px]"
+                    onclick="resetForm()">
                 Cancelar y Editar
             </button>
         </div>
@@ -270,9 +142,12 @@ const banksRequiringCurrency = {
 // Update currency visibility when bank changes
 document.getElementById('bank').addEventListener('change', function() {
     const requiresCurrency = banksRequiringCurrency[this.value] || false;
-    document.getElementById('currencyContainer').style.display = requiresCurrency ? 'block' : 'none';
-    
-    if (!requiresCurrency) {
+    const currencyContainer = document.getElementById('currencyContainer');
+
+    if (requiresCurrency) {
+        currencyContainer.classList.remove('hidden');
+    } else {
+        currencyContainer.classList.add('hidden');
         document.getElementById('currency').value = '';
     }
 });
@@ -337,81 +212,107 @@ function processData() {
 
 function handleParseSuccess(data) {
     parsedTransactions = data.transactions;
-    
+
     // Clear previous state
     document.getElementById('errorsContainer').innerHTML = '';
-    
+
     // Show summary
     const summary = `Processed ${data.total_parsed} rows. ${data.total_valid} valid transaction(s) ready to import.`;
     document.getElementById('summaryText').innerText = summary;
-    document.getElementById('summaryAlert').style.display = 'block';
-    
+    document.getElementById('summaryAlert').classList.remove('hidden');
+
     // Show validation errors as warnings if any
     if (data.validation_errors && data.validation_errors.length > 0) {
-        let warningHtml = '<div class="alert alert-warning"><strong>Validation Issues:</strong><ul>';
+        let warningHtml = '<div class="p-4 mb-4 bg-yellow-100 border-l-4 border-yellow-500"><strong class="text-slate-700">Validation Issues:</strong><ul class="mt-2 ml-4 list-disc">';
         data.validation_errors.forEach(err => {
             warningHtml += `<li><strong>Line ${err.line}:</strong> ${err.errors.join(', ')}</li>`;
         });
         warningHtml += '</ul></div>';
         document.getElementById('errorsContainer').innerHTML = warningHtml;
     }
-    
-    // Populate table
+
+    // Populate cards
     populateTable(parsedTransactions);
-    
+
     // Show preview section
-    document.getElementById('previewSection').style.display = 'block';
-    
+    document.getElementById('previewSection').classList.remove('hidden');
+
     // Scroll to preview
     document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth' });
 }
 
 function populateTable(transactions) {
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '';
-    
+    const container = document.getElementById('tableBody');
+    container.innerHTML = '';
+
     transactions.forEach((txn, index) => {
         const isDuplicate = txn.is_duplicate || false;
         const statusIcon = isDuplicate ? '⚠️' : '✓';
         const statusText = isDuplicate ? 'Ya existe' : 'Nueva';
-        const statusStyle = isDuplicate ? 'color: orange; font-weight: bold;' : 'color: green;';
-        const rowStyle = isDuplicate ? 'background-color: rgba(255, 193, 7, 0.1);' : '';
-        
-        const row = tbody.insertRow();
-        if (isDuplicate) {
-            row.className = 'bulk-row-duplicate';
-        }
-        row.innerHTML = `
-            <td style="text-align: center;"><input type="checkbox" class="txn-checkbox" value="${index}" ${isDuplicate ? '' : 'checked'}></td>
-            <td style="white-space: nowrap;">${txn.date || '-'}</td>
-            <td>${txn.description || '-'}</td>
-            <td class="text-right" style="white-space: nowrap;">${txn.amount || '-'}</td>
-            <td>${txn.currency || '-'}</td>
-            <td>
-                <input type="text" 
-                       class="form-control form-control-sm txn-category" 
-                       data-index="${index}"
-                       list="categoriesList"
-                       placeholder="Category..."
-                       style="min-width: 120px;">
-            </td>
-            <td>
-                <input type="text" 
-                       class="form-control form-control-sm txn-payee" 
-                       data-index="${index}"
-                       list="payeesList"
-                       placeholder="Payee..."
-                       style="min-width: 120px;">
-            </td>
-            <td style="${statusStyle}" title="${statusText}">
-                <span style="font-size: 1.2rem;">${statusIcon}</span>
-                <small style="white-space: nowrap;">${statusText}</small>
-            </td>
+        const statusClass = isDuplicate ? 'bg-yellow-100 border-yellow-300 text-yellow-700' : 'bg-green-100 border-green-300 text-green-700';
+        const cardBgClass = isDuplicate ? 'bg-yellow-50' : 'bg-white';
+
+        const cardHtml = `
+            <div class="relative p-4 border-3 border-border ${cardBgClass} rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg">
+                <!-- Header: Checkbox, Date, Description, Amount, Status -->
+                <div class="flex flex-wrap md:flex-nowrap items-start gap-3 mb-3 pb-3 border-b-2 border-slate-100">
+                    <!-- Checkbox -->
+                    <div class="shrink-0 flex items-center">
+                        <input type="checkbox"
+                               class="txn-checkbox w-5 h-5 border-2 border-border cursor-pointer"
+                               value="${index}"
+                               ${isDuplicate ? '' : 'checked'}>
+                    </div>
+
+                    <!-- Date -->
+                    <div class="text-sm font-semibold text-slate-500 shrink-0 w-full md:w-auto order-1">
+                        ${txn.date || '-'}
+                    </div>
+
+                    <!-- Amount on mobile right, desktop middle-right -->
+                    <div class="font-extrabold text-lg whitespace-nowrap text-muted px-3 py-1 bg-slate-100 rounded shrink-0 ml-auto md:ml-0 order-2 md:order-3">
+                        ${txn.currency || ''} ${txn.amount || '-'}
+                    </div>
+
+                    <!-- Description - full width on mobile, flex-1 on desktop -->
+                    <div class="w-full md:flex-1 font-semibold text-base text-muted leading-snug break-words order-3 md:order-2">
+                        ${txn.description || '-'}
+                    </div>
+
+                    <!-- Status badge -->
+                    <div class="shrink-0 px-2 py-1 border-2 ${statusClass} rounded text-sm font-bold whitespace-nowrap order-4">
+                        ${statusIcon} ${statusText}
+                    </div>
+                </div>
+
+                <!-- Controls: Category and Payee in 2 columns -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">📁 Categoría</label>
+                        <input type="text"
+                               class="txn-category w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all cursor-text hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]"
+                               data-index="${index}"
+                               list="categoriesList"
+                               placeholder="Categoría...">
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">👤 Beneficiario</label>
+                        <input type="text"
+                               class="txn-payee w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all cursor-text hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]"
+                               data-index="${index}"
+                               list="payeesList"
+                               placeholder="Beneficiario...">
+                    </div>
+                </div>
+            </div>
         `;
+
+        container.insertAdjacentHTML('beforeend', cardHtml);
     });
-    
+
     document.getElementById('transactionCount').innerText = transactions.length;
-    document.getElementById('tableContainer').style.display = 'block';
+    document.getElementById('tableContainer').classList.remove('hidden');
 }
 
 function toggleSelectAll(checkbox) {
@@ -485,13 +386,12 @@ function confirmTransactions() {
         if (data.success) {
             // Show success message
             const successHtml = `
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <strong>Success!</strong> ${data.message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="p-4 mb-4 bg-green-100 border-l-4 border-green-500">
+                    <strong class="text-green-700">Success!</strong> <span class="text-green-700">${data.message}</span>
                 </div>
             `;
             document.getElementById('previewSection').insertAdjacentHTML('afterbegin', successHtml);
-            
+
             // Reset form after 2 seconds
             setTimeout(() => {
                 resetForm();
@@ -509,8 +409,8 @@ function confirmTransactions() {
 
 function resetForm() {
     document.getElementById('bulkImportForm').reset();
-    document.getElementById('previewSection').style.display = 'none';
-    document.getElementById('currencyContainer').style.display = 'none';
+    document.getElementById('previewSection').classList.add('hidden');
+    document.getElementById('currencyContainer').classList.add('hidden');
     parsedTransactions = [];
 }
 
@@ -519,8 +419,8 @@ function showError(message) {
 }
 
 function showErrors(errors) {
-    let html = '<div class="alert alert-danger alert-dismissible fade show" role="alert">';
-    html += '<strong>Error(s):</strong><ul>';
+    let html = '<div class="p-4 mb-4 bg-red-100 border-l-4 border-red-500">';
+    html += '<strong class="text-red-700">Error(s):</strong><ul class="mt-2 ml-4 list-disc text-red-700">';
     errors.forEach(err => {
         if (typeof err === 'object') {
             html += `<li>${JSON.stringify(err)}</li>`;
@@ -528,10 +428,8 @@ function showErrors(errors) {
             html += `<li>${err}</li>`;
         }
     });
-    html += '</ul>';
-    html += '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-    html += '</div>';
-    
+    html += '</ul></div>';
+
     document.getElementById('errorsContainer').innerHTML = html;
 }
 </script>
