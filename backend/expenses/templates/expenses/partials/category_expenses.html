@@ -38,7 +38,7 @@
             <tr {% if not row.counts_to_total %}style="opacity:0.6"{% endif %}>
               <td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">
                 {% url 'expenses:manage_transactions' as filter_url %}
-                <a href="{{ filter_url }}?category={{ row.category|urlencode }}{% if not convert_to_usd %}&currency={{ row.currency|urlencode }}{% endif %}&month={{ selected_month_str }}"
+                <a href="{{ filter_url }}?category={% if row.category == 'Sin categoría' %}__null__{% else %}{{ row.category|urlencode }}{% endif %}{% if not convert_to_usd %}&currency={{ row.currency|urlencode }}{% endif %}&month={{ selected_month_str }}"
                    style="color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)">
                   {{ row.category }}{% if not row.counts_to_total %} <small style="color:#999">(no cuenta)</small>{% endif %}
                 </a>

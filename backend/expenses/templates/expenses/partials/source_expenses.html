@@ -38,7 +38,7 @@
             <tr>
               <td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">
                 {% url 'expenses:manage_transactions' as filter_url %}
-                <a href="{{ filter_url }}?source={{ row.source|urlencode }}{% if not convert_to_usd %}&currency={{ row.currency|urlencode }}{% endif %}&month={{ selected_month_str }}"
+                <a href="{{ filter_url }}?source={% if row.source == 'Sin origen' %}__null__{% else %}{{ row.source|urlencode }}{% endif %}{% if not convert_to_usd %}&currency={{ row.currency|urlencode }}{% endif %}&month={{ selected_month_str }}"
                    style="color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)">
                   {{ row.source }}
                 </a>
