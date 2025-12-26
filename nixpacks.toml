@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["...", "nodejs", "python39"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "npm install"
+]
+
+[phases.build]
+cmds = ["npm run build:css"]
+
+[start]
+cmd = "cd backend && python manage.py migrate && python manage.py collectstatic --noinput && gunicorn --worker-tmp-dir /dev/shm misfinanzas.wsgi:application"

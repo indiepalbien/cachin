@@ -5,237 +5,56 @@
 {% block content %}
 
   {% if is_onboarding and onboarding_step == 5 %}
-  <div class="onboarding-banner">
-    <div class="onboarding-progress">
-      <div class="progress-bar">
-        <div class="progress-fill" style="width: 100%;"></div>
+  <div class="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-6 md:p-8 rounded-lg mb-6 shadow-lg">
+    <div class="mb-6">
+      <div class="w-full h-2 bg-white/30 rounded overflow-hidden mb-2">
+        <div class="h-full bg-white transition-all duration-300" style="width: 100%;"></div>
       </div>
-      <p class="step-text">Paso 5 de 5 - ¡Último paso!</p>
+      <p class="m-0 text-sm opacity-90">Paso 5 de 5 - ¡Último paso!</p>
     </div>
 
-    <div class="onboarding-message">
-      <h2>🎉 ¡Ya casi terminamos!</h2>
-      <h3>Paso 5: Tu Panel de Control</h3>
-      <p>Este es tu panel principal donde podrás ver tus transacciones recientes, agregar gastos rápidamente y ver resúmenes por categoría, proyecto y origen.</p>
-      <div class="info-box">
-        <strong>💡 Funciones principales:</strong>
-        <ul style="margin:0.5rem 0 0 1.2rem;padding:0;line-height:1.8;">
+    <div>
+      <h2 class="m-0 mb-2 text-2xl md:text-3xl font-extrabold">🎉 ¡Ya casi terminamos!</h2>
+      <h3 class="m-0 mb-4 text-lg md:text-xl font-normal opacity-95">Paso 5: Tu Panel de Control</h3>
+      <p class="leading-relaxed mb-4">Este es tu panel principal donde podrás ver tus transacciones recientes, agregar gastos rápidamente y ver resúmenes por categoría, proyecto y origen.</p>
+      <div class="bg-white/20 p-4 rounded-md my-4 border-l-4 border-white">
+        <strong class="block mb-2">💡 Funciones principales:</strong>
+        <ul class="my-2 ml-5 p-0 leading-loose">
           <li><strong>Añadir transacciones:</strong> Usa el formulario rápido para registrar gastos</li>
           <li><strong>Ver resúmenes:</strong> Analiza tus gastos por categoría, proyecto u origen</li>
           <li><strong>Gestionar datos:</strong> Accede a "Mis datos" para configurar todo</li>
         </ul>
       </div>
-      <p class="reminder">📝 ¡Estás listo para empezar a usar Cachin! Presiona el botón para completar la configuración.</p>
-      <form method="post" style="margin-top: 1rem;">
+      <p class="bg-white/15 p-3 rounded my-4">📝 ¡Estás listo para empezar a usar Cachin! Presiona el botón para completar la configuración.</p>
+      <form method="post" class="mt-4">
         {% csrf_token %}
         <input type="hidden" name="onboarding_complete" value="1">
-        <button type="submit" class="btn-primary">¡Comenzar a Usar Cachin! 🚀</button>
+        <button type="submit" class="bg-white text-indigo-600 px-6 py-3 border-0 text-base font-bold rounded-md cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg min-h-[44px]">¡Comenzar a Usar Cachin! 🚀</button>
       </form>
     </div>
   </div>
-
-  <style>
-    .onboarding-banner {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 2rem;
-      border-radius: 8px;
-      margin-bottom: 2rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-
-    .onboarding-progress {
-      margin-bottom: 1.5rem;
-    }
-
-    .progress-bar {
-      width: 100%;
-      height: 8px;
-      background-color: rgba(255,255,255,0.3);
-      border-radius: 4px;
-      overflow: hidden;
-      margin-bottom: 0.5rem;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background-color: white;
-      transition: width 0.3s ease;
-    }
-
-    .step-text {
-      margin: 0;
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
-
-    .onboarding-message h2 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.8rem;
-    }
-
-    .onboarding-message h3 {
-      margin: 0 0 1rem 0;
-      font-size: 1.3rem;
-      font-weight: normal;
-      opacity: 0.95;
-    }
-
-    .onboarding-message p {
-      line-height: 1.6;
-      margin-bottom: 1rem;
-    }
-
-    .info-box {
-      background-color: rgba(255,255,255,0.2);
-      padding: 1rem;
-      border-radius: 6px;
-      margin: 1rem 0;
-      border-left: 4px solid white;
-    }
-
-    .reminder {
-      background-color: rgba(255,255,255,0.15);
-      padding: 0.75rem;
-      border-radius: 4px;
-      margin: 1rem 0;
-    }
-
-    .btn-primary {
-      background-color: white;
-      color: #667eea;
-      border: none;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-  </style>
   {% endif %}
 
-  <!-- Email automation moved to Manage views -->
-
   <!-- Quick-add compact form -->
-  <section id="quick-add" style="margin:1rem 0;padding:0.75rem;border:1px solid var(--accent);background:var(--panel);">
-    <style>
-      /* Compact grid for quick-add, keeps fields aligned and wraps neatly on mobile */
-      #quick-add .qa-grid{
-        display:grid;
-        grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
-        gap:0.6rem;
-        align-items:center;
-      }
-      #quick-add input{width:100%;box-sizing:border-box;padding:0.5rem 0.65rem}
-      #quick-add input[type=number]{appearance:textfield;-moz-appearance:textfield}
-      #quick-add input[type=number]::-webkit-outer-spin-button,
-      #quick-add input[type=number]::-webkit-inner-spin-button{margin:0;-webkit-appearance:none}
-      #quick-add .qa-grid button{grid-column:1/-1}
-      @media(min-width:960px){
-        #quick-add .qa-grid{grid-template-columns:repeat(4,1fr)}
-      }
-      @media (max-width:640px) {
-        #quick-add .qa-grid {
-          grid-template-columns: 1fr;
-        }
-        #quick-add .qa-grid button {
-          padding: 0.75rem 1rem;
-          font-size: 1rem;
-        }
-
-        /* Recent transactions mobile layout */
-        #recent-transactions ul li {
-          display: flex !important;
-          flex-wrap: wrap !important;
-          gap: 0.25rem !important;
-          padding: 0.5rem !important;
-          background: #fff;
-          border: 2px solid var(--border) !important;
-          border-radius: 4px;
-          margin-bottom: 0.5rem !important;
-          position: relative;
-        }
-
-        #recent-transactions ul li a {
-          position: absolute !important;
-          top: 0.5rem;
-          right: 0.5rem;
-          width: 32px !important;
-          height: 32px !important;
-          padding: 0 !important;
-          background: var(--accent);
-          color: #fff;
-          border-radius: 3px;
-          font-size: 1rem;
-          text-decoration: none;
-          display: flex !important;
-          align-items: center;
-          justify-content: center;
-        }
-
-        #recent-transactions ul li span {
-          width: auto !important;
-          min-width: 0 !important;
-          text-align: left !important;
-          line-height: 1.4;
-        }
-
-        #recent-transactions ul li span:nth-of-type(1) {
-          flex: 0 0 calc(100% - 40px);
-          font-weight: 600;
-          font-size: 0.95rem;
-          color: var(--muted);
-        }
-
-        #recent-transactions ul li span:nth-of-type(2) {
-          flex: 0 0 auto;
-          font-size: 0.95rem;
-          font-weight: 700;
-          color: var(--accent);
-        }
-
-        #recent-transactions ul li span:nth-of-type(3) {
-          flex: 0 0 auto;
-          font-size: 0.85rem;
-          color: var(--muted);
-          text-transform: uppercase;
-        }
-
-        #recent-transactions ul li span:nth-of-type(4) {
-          flex: 0 0 100%;
-          font-size: 0.8rem;
-          color: #666;
-        }
-
-        /* Pagination mobile */
-        #recent-transactions > div[style*="justify-content"] {
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-      }
-      @media (max-width:768px) and (min-width:641px) {
-        #quick-add .qa-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
-      }
-    </style>
+  <section id="quick-add" class="my-4 p-3 md:p-4 border border-accent bg-panel rounded">
     <form id="quick-add-form"
           hx-post="{% url 'expenses:quick_transaction' %}"
           hx-target="#qa-msg"
           hx-swap="innerHTML"
           hx-indicator="#qa-submit">
       {% csrf_token %}
-      <div class="qa-grid">
-        <input name="description" id="qa-description" class="qa-description" placeholder="Descripción*" required>
-        <input name="amount" id="qa-amount" class="qa-amount" type="number" step="0.01" placeholder="Ej: 123.45" required>
-        <input name="date" id="qa-date" type="date" required>
-        <input name="currency" id="qa-currency" class="qa-currency" list="qa-currencies" placeholder="EUR* / USD*" maxlength="3" required>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <input name="description" id="qa-description" placeholder="Descripción*" required
+               class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+
+        <input name="amount" id="qa-amount" type="number" step="0.01" placeholder="Ej: 123.45" required
+               class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+
+        <input name="date" id="qa-date" type="date" required
+               class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+
+        <input name="currency" id="qa-currency" list="qa-currencies" placeholder="EUR* / USD*" maxlength="3" required
+               class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
         <datalist id="qa-currencies">
           <option value="USD">
           <option value="EUR">
@@ -246,49 +65,53 @@
           <option value="CLP">
           <option value="MXN">
         </datalist>
-        <!-- Category: text input with server-rendered suggestions -->
-        <input name="category" id="qa-category" list="qa-categorys" placeholder="Categoría...">
+
+        <input name="category" id="qa-category" list="qa-categorys" placeholder="Categoría..."
+               class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
         <datalist id="qa-categorys">
           {% for name in qa_categories %}
             <option value="{{ name }}">
           {% endfor %}
         </datalist>
 
-        <!-- Project: text input with server-rendered suggestions -->
-        <input name="project" id="qa-project" list="qa-projects" placeholder="Proyecto...">
+        <input name="project" id="qa-project" list="qa-projects" placeholder="Proyecto..."
+               class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
         <datalist id="qa-projects">
           {% for name in qa_projects %}
             <option value="{{ name }}">
           {% endfor %}
         </datalist>
 
-        <!-- Payee: text input with server-rendered suggestions -->
-        <input name="payee" id="qa-payee" list="qa-payees" placeholder="Beneficiario...">
+        <input name="payee" id="qa-payee" list="qa-payees" placeholder="Beneficiario..."
+               class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
         <datalist id="qa-payees">
           {% for name in qa_payees %}
             <option value="{{ name }}">
           {% endfor %}
         </datalist>
 
-        <!-- Source: text input with server-rendered suggestions -->
-        <input name="source" id="qa-source" list="qa-sources" placeholder="Origen...">
+        <input name="source" id="qa-source" list="qa-sources" placeholder="Origen..."
+               class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
         <datalist id="qa-sources">
           {% for name in qa_sources %}
             <option value="{{ name }}">
           {% endfor %}
         </datalist>
-        <button id="qa-submit" type="submit">
-          <span class="htmx-indicator">Guardando...</span>
+
+        <button id="qa-submit" type="submit"
+                class="col-span-full bg-accent text-white px-4 py-3 border-0 rounded font-bold cursor-pointer transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">
+          <span class="htmx-indicator hidden">Guardando...</span>
           <span class="normal-text">Añadir</span>
         </button>
       </div>
     </form>
-    <div id="qa-msg" aria-live="polite" style="margin-top:0.5rem;min-height:1.5rem"></div>
+    <div id="qa-msg" aria-live="polite" class="mt-2 min-h-[1.5rem]"></div>
+
     <style>
-      #qa-submit .htmx-indicator { display: none; }
       #qa-submit.htmx-request .htmx-indicator { display: inline; }
       #qa-submit.htmx-request .normal-text { display: none; }
     </style>
+
     <script>
       // Set default date on page load
       document.addEventListener('DOMContentLoaded', function() {
@@ -306,73 +129,75 @@
         }
       });
     </script>
-    
-    <!-- Bulk import link -->
-    <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px dashed var(--accent);">
-      <a href="{% url 'expenses:bulk_add' %}" 
-         style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;background:var(--accent);color:var(--bg);text-decoration:none;border-radius:4px;font-weight:500;transition:opacity .2s"
-         onmouseover="this.style.opacity='0.8'" 
-         onmouseout="this.style.opacity='1'">
-        📋 Importar múltiples transacciones
-      </a>
-      <span style="margin-left:0.5rem;color:var(--muted);font-size:0.9rem">
-        Copiar y pegar desde tu banco
-      </span>
-    </div>
-    
-    <!-- Image upload link -->
-    <div style="margin-top:0.75rem;">
-      <a href="{% url 'expenses:image_upload' %}" 
-         style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.5rem 1rem;background:#10b981;color:white;text-decoration:none;border-radius:4px;font-weight:500;transition:opacity .2s"
-         onmouseover="this.style.opacity='0.8'" 
-         onmouseout="this.style.opacity='1'">
-        📷 Subir imágenes de transacciones
-      </a>
-      <span style="margin-left:0.5rem;color:var(--muted);font-size:0.9rem">
-        Procesar recibos y capturas con IA
-      </span>
+
+    <!-- Bulk import and image upload links -->
+    <div class="mt-4 pt-3 border-t border-dashed border-accent space-y-3">
+      <div>
+        <a href="{% url 'expenses:bulk_add' %}"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-accent text-bg no-underline rounded font-medium transition-opacity hover:opacity-80 min-h-[44px]">
+          📋 Importar múltiples transacciones
+        </a>
+        <span class="ml-2 text-muted text-sm">
+          Copiar y pegar desde tu banco
+        </span>
+      </div>
+
+      <div>
+        <a href="{% url 'expenses:image_upload' %}"
+           class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white no-underline rounded font-medium transition-opacity hover:opacity-80 min-h-[44px]">
+          📷 Subir imágenes de transacciones
+        </a>
+        <span class="ml-2 text-muted text-sm">
+          Procesar recibos y capturas con IA
+        </span>
+      </div>
     </div>
   </section>
 
-
   <!-- Últimas transacciones (paginadas, 5 por página) -->
-  <section id="recent-transactions" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
-    <h2 style="margin:0 0 .5rem 0">Últimas transacciones</h2>
+  <section id="recent-transactions" class="my-4 p-3 md:p-4 border border-accent bg-panel rounded">
+    <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold">Últimas transacciones</h2>
     {% if tx_page and tx_page.object_list %}
-      <ul style="list-style:none;padding:0;margin:0">
+      <ul class="list-none p-0 m-0 space-y-2 md:space-y-0">
         {% for t in tx_page %}
-          <li style="display:flex;gap:.5rem;align-items:center;border-bottom:1px dashed var(--accent);padding:.4rem 0">
+          <li class="flex flex-wrap md:flex-nowrap gap-2 md:gap-3 items-center border-b border-dashed border-accent p-3 md:p-2 bg-white md:bg-transparent rounded md:rounded-none relative">
             <a href="{% url 'expenses:manage_transaction_edit' t.pk %}?next={{ request.get_full_path|urlencode }}"
               title="Editar"
               aria-label="Editar transacción"
-              style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:var(--muted);text-decoration:none;font-size:14px;line-height:1">🔧</a>
-            <span style="flex:2;min-width:160px">{{ t.description }}</span>
-            <span style="width:120px;text-align:right">{{ t.amount }}</span>
-            <span style="width:70px;text-transform:uppercase;text-align:center">{{ t.currency }}</span>
-            <span style="width:130px;text-align:right">{{ t.date }}</span>
+              class="absolute md:relative top-2 right-2 md:top-auto md:right-auto flex items-center justify-center w-8 h-8 md:w-6 md:h-6 text-muted no-underline text-sm md:text-xs bg-accent md:bg-transparent text-white md:text-muted rounded">🔧</a>
+
+            <!-- Mobile: Full width description -->
+            <span class="flex-[0_0_calc(100%-40px)] md:flex-[2] md:min-w-[160px] font-semibold md:font-normal text-base md:text-sm text-muted break-words">{{ t.description }}</span>
+
+            <!-- Mobile: Amount, currency, date on one row -->
+            <span class="flex-[0_0_auto] font-bold md:font-normal text-base md:text-sm text-accent md:text-muted md:w-[120px] md:text-right">{{ t.amount }}</span>
+            <span class="flex-[0_0_auto] text-sm md:text-xs text-muted uppercase md:w-[70px] md:text-center">{{ t.currency }}</span>
+            <span class="flex-[0_0_100%] md:flex-initial text-sm md:text-xs text-slate-600 md:w-[130px] md:text-right">{{ t.date }}</span>
           </li>
         {% endfor %}
       </ul>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.5rem">
+
+      <div class="flex flex-wrap justify-between items-center gap-2 mt-3">
         <div>
           {% if tx_page.has_previous %}
-            <a href="?page={{ tx_page.previous_page_number }}">« Anterior</a>
+            <a href="?page={{ tx_page.previous_page_number }}" class="text-accent font-bold hover:underline min-h-[44px] inline-flex items-center">« Anterior</a>
           {% endif %}
         </div>
         <div>
           {% if tx_page.has_next %}
-            <a href="?page={{ tx_page.next_page_number }}">Siguiente »</a>
+            <a href="?page={{ tx_page.next_page_number }}" class="text-accent font-bold hover:underline min-h-[44px] inline-flex items-center">Siguiente »</a>
           {% endif %}
         </div>
       </div>
-      <div style="text-align:center;margin-top:.25rem">
+
+      <div class="text-center mt-2">
         {% if tx_page.paginator.num_pages <= 7 %}
           {# Show all pages if 7 or fewer #}
           {% for num in tx_page.paginator.page_range %}
             {% if num == tx_page.number %}
-              <span style="font-weight:700;border-bottom:2px solid var(--accent);padding:0 .25rem">{{ num }}</span>
+              <span class="font-bold border-b-2 border-accent px-1 inline-block min-h-[44px]">{{ num }}</span>
             {% else %}
-              <a href="?page={{ num }}" style="padding:0 .25rem">{{ num }}</a>
+              <a href="?page={{ num }}" class="px-1 hover:underline inline-block min-h-[44px]">{{ num }}</a>
             {% endif %}
           {% endfor %}
         {% else %}
@@ -382,12 +207,12 @@
             {% for num in tx_page.paginator.page_range %}
               {% if num <= 5 or num == tx_page.paginator.num_pages %}
                 {% if num == tx_page.number %}
-                  <span style="font-weight:700;border-bottom:2px solid var(--accent);padding:0 .25rem">{{ num }}</span>
+                  <span class="font-bold border-b-2 border-accent px-1">{{ num }}</span>
                 {% else %}
-                  <a href="?page={{ num }}" style="padding:0 .25rem">{{ num }}</a>
+                  <a href="?page={{ num }}" class="px-1 hover:underline">{{ num }}</a>
                 {% endif %}
                 {% if num == 5 and tx_page.paginator.num_pages > 6 %}
-                  <span style="padding:0 .25rem">...</span>
+                  <span class="px-1">...</span>
                 {% endif %}
               {% endif %}
             {% endfor %}
@@ -396,15 +221,15 @@
             {% for num in tx_page.paginator.page_range %}
               {% if num == 1 or num >= tx_page.paginator.num_pages|add:"-4" %}
                 {% if num == 1 %}
-                  <a href="?page={{ num }}" style="padding:0 .25rem">{{ num }}</a>
+                  <a href="?page={{ num }}" class="px-1 hover:underline">{{ num }}</a>
                   {% if tx_page.paginator.num_pages > 6 %}
-                    <span style="padding:0 .25rem">...</span>
+                    <span class="px-1">...</span>
                   {% endif %}
                 {% else %}
                   {% if num == tx_page.number %}
-                    <span style="font-weight:700;border-bottom:2px solid var(--accent);padding:0 .25rem">{{ num }}</span>
+                    <span class="font-bold border-b-2 border-accent px-1">{{ num }}</span>
                   {% else %}
-                    <a href="?page={{ num }}" style="padding:0 .25rem">{{ num }}</a>
+                    <a href="?page={{ num }}" class="px-1 hover:underline">{{ num }}</a>
                   {% endif %}
                 {% endif %}
               {% endif %}
@@ -414,16 +239,16 @@
             {% for num in tx_page.paginator.page_range %}
               {% if num == 1 or num == tx_page.paginator.num_pages or num >= tx_page.number|add:"-1" and num <= tx_page.number|add:"1" %}
                 {% if num == 1 %}
-                  <a href="?page={{ num }}" style="padding:0 .25rem">{{ num }}</a>
-                  <span style="padding:0 .25rem">...</span>
+                  <a href="?page={{ num }}" class="px-1 hover:underline">{{ num }}</a>
+                  <span class="px-1">...</span>
                 {% elif num == tx_page.paginator.num_pages %}
-                  <span style="padding:0 .25rem">...</span>
-                  <a href="?page={{ num }}" style="padding:0 .25rem">{{ num }}</a>
+                  <span class="px-1">...</span>
+                  <a href="?page={{ num }}" class="px-1 hover:underline">{{ num }}</a>
                 {% else %}
                   {% if num == tx_page.number %}
-                    <span style="font-weight:700;border-bottom:2px solid var(--accent);padding:0 .25rem">{{ num }}</span>
+                    <span class="font-bold border-b-2 border-accent px-1">{{ num }}</span>
                   {% else %}
-                    <a href="?page={{ num }}" style="padding:0 .25rem">{{ num }}</a>
+                    <a href="?page={{ num }}" class="px-1 hover:underline">{{ num }}</a>
                   {% endif %}
                 {% endif %}
               {% endif %}
@@ -432,43 +257,43 @@
         {% endif %}
       </div>
     {% else %}
-      <p style="margin:0">Aún no hay transacciones.</p>
+      <p class="m-0">Aún no hay transacciones.</p>
     {% endif %}
   </section>
 
   <!-- Gastos por categoría con carga independiente -->
-  <section id="category-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
-    <h2 style="margin:0 0 .5rem 0">Gastos por categoría</h2>
+  <section id="category-expenses" class="my-4 p-3 md:p-4 border border-accent bg-panel rounded">
+    <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold">Gastos por categoría</h2>
     <div id="category-expenses-section"
          hx-get="{% url 'expenses:api_category_expenses' %}"
          hx-trigger="load"
          hx-target="this"
          hx-swap="outerHTML">
-      <p style="text-align:center;color:#999">Cargando gastos...</p>
+      <p class="text-center text-slate-500">Cargando gastos...</p>
     </div>
   </section>
 
   <!-- Gastos por proyecto (total, sin filtro de mes) -->
-  <section id="project-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
-    <h2 style="margin:0 0 .5rem 0">Gastos por proyecto (Total)</h2>
+  <section id="project-expenses" class="my-4 p-3 md:p-4 border border-accent bg-panel rounded">
+    <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold">Gastos por proyecto (Total)</h2>
     <div id="project-expenses-section"
          hx-get="{% url 'expenses:api_project_expenses' %}"
          hx-trigger="load"
          hx-target="this"
          hx-swap="outerHTML">
-      <p style="text-align:center;color:#999">Cargando gastos...</p>
+      <p class="text-center text-slate-500">Cargando gastos...</p>
     </div>
   </section>
 
   <!-- Gastos por origen (mensual, con navegación) -->
-  <section id="source-expenses" style="margin:1rem 0;padding:0.5rem;border:1px solid var(--accent);background:var(--panel);">
-    <h2 style="margin:0 0 .5rem 0">Gastos por origen</h2>
+  <section id="source-expenses" class="my-4 p-3 md:p-4 border border-accent bg-panel rounded">
+    <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold">Gastos por origen</h2>
     <div id="source-expenses-section"
          hx-get="{% url 'expenses:api_source_expenses' %}"
          hx-trigger="load"
          hx-target="this"
          hx-swap="outerHTML">
-      <p style="text-align:center;color:#999">Cargando gastos...</p>
+      <p class="text-center text-slate-500">Cargando gastos...</p>
     </div>
   </section>
 

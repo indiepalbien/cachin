@@ -13,3 +13,10 @@ wheels/
 # Media files (local development uploads)
 backend/media/
 media/
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Generated CSS (built by Tailwind)
+backend/expenses/static/expenses/output.css

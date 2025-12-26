@@ -13,45 +13,46 @@
     <link rel="apple-touch-icon" href="{% static 'expenses/images/apple-touch-icon.png' %}">
     <link rel="icon" type="image/png" sizes="192x192" href="{% static 'expenses/images/icon-192x192.png' %}">
     <title>{% block title %}App-Finanzas{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'expenses/style.css' %}">
+    <link rel="stylesheet" href="{% static 'expenses/output.css' %}">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   </head>
   <body>
     <header>
-      <nav class="nav">
-        <a class="brand" href="/">Cachin</a>
+      <!-- Desktop Navigation -->
+      <nav class="flex items-center justify-between gap-4 bg-panel px-4 py-3 border-b-6 border-border shadow-brutal-lg">
+        <a class="font-extrabold tracking-wider no-underline text-muted px-3 py-2 border-4 border-border bg-transparent hover:bg-accent hover:text-white transition-colors" href="/">Cachin</a>
 
         <!-- Hamburger Button (mobile only) -->
-        <button id="menu-toggle" class="menu-toggle" aria-label="Toggle menu" aria-expanded="false">
-          <span class="hamburger-line"></span>
-          <span class="hamburger-line"></span>
-          <span class="hamburger-line"></span>
+        <button id="menu-toggle" class="hidden md:hidden flex-col gap-[5px] bg-transparent border-3 border-border p-2 cursor-pointer z-[1001] transition-all hover:bg-accent group" aria-label="Toggle menu" aria-expanded="false">
+          <span class="w-6 h-[3px] bg-border transition-all block group-hover:bg-white"></span>
+          <span class="w-6 h-[3px] bg-border transition-all block group-hover:bg-white"></span>
+          <span class="w-6 h-[3px] bg-border transition-all block group-hover:bg-white"></span>
         </button>
 
         <!-- Navigation Links (desktop + mobile drawer) -->
-        <div class="nav-links" id="nav-links">
-          <div class="nav-overlay" id="nav-overlay"></div>
-          <div class="nav-drawer">
+        <div id="nav-links" class="flex items-center gap-2 max-md:fixed max-md:top-0 max-md:-right-full max-md:w-[280px] max-md:h-full max-md:bg-panel max-md:border-l-6 max-md:border-border max-md:shadow-[-8px_0_0_rgba(0,0,0,0.06)] max-md:z-[1000] max-md:transition-[right_0.3s_ease]">
+          <div id="nav-overlay" class="hidden fixed top-0 left-0 w-full h-full bg-black/50 z-[999] opacity-0 transition-opacity"></div>
+          <div class="flex items-center gap-2 max-md:flex-col max-md:items-stretch max-md:gap-0 max-md:pt-16 max-md:px-6 max-md:pb-6 max-md:h-full max-md:relative max-md:z-[1001]">
             {% if user.is_authenticated %}
-              <div class="nav-user">Hola, {{ user.username }}</div>
-              <a href="{% url 'profile' %}">Mi perfil</a>
-              <a href="{% url 'expenses:manage_dashboard' %}">Mis datos</a>
-              <a href="{% url 'expenses:my_uploads' %}">Mis Subidas</a>
-              <a href="{% url 'logout' %}">Cerrar sesión</a>
+              <div class="px-2 py-2 border-2 border-dashed border-border max-md:block max-md:w-full max-md:px-4 max-md:py-3 max-md:mb-3">Hola, {{ user.username }}</div>
+              <a href="{% url 'profile' %}" class="inline-block px-3 py-2 no-underline text-muted border-3 border-border bg-white hover:bg-accent hover:text-white transition-all max-md:block max-md:w-full max-md:px-4 max-md:py-3 max-md:mb-3 max-md:font-bold">Mi perfil</a>
+              <a href="{% url 'expenses:manage_dashboard' %}" class="inline-block px-3 py-2 no-underline text-muted border-3 border-border bg-white hover:bg-accent hover:text-white transition-all max-md:block max-md:w-full max-md:px-4 max-md:py-3 max-md:mb-3 max-md:font-bold">Mis datos</a>
+              <a href="{% url 'expenses:my_uploads' %}" class="inline-block px-3 py-2 no-underline text-muted border-3 border-border bg-white hover:bg-accent hover:text-white transition-all max-md:block max-md:w-full max-md:px-4 max-md:py-3 max-md:mb-3 max-md:font-bold">Mis Subidas</a>
+              <a href="{% url 'logout' %}" class="inline-block px-3 py-2 no-underline text-muted border-3 border-border bg-white hover:bg-accent hover:text-white transition-all max-md:block max-md:w-full max-md:px-4 max-md:py-3 max-md:mb-3 max-md:font-bold">Cerrar sesión</a>
             {% else %}
-              <a href="{% url 'login' %}">Ingresar</a>
-              <a href="{% url 'register' %}">Registrarse</a>
+              <a href="{% url 'login' %}" class="inline-block px-3 py-2 no-underline text-muted border-3 border-border bg-white hover:bg-accent hover:text-white transition-all max-md:block max-md:w-full max-md:px-4 max-md:py-3 max-md:mb-3 max-md:font-bold">Ingresar</a>
+              <a href="{% url 'register' %}" class="inline-block px-3 py-2 no-underline text-muted border-3 border-border bg-white hover:bg-accent hover:text-white transition-all max-md:block max-md:w-full max-md:px-4 max-md:py-3 max-md:mb-3 max-md:font-bold">Registrarse</a>
             {% endif %}
           </div>
         </div>
       </nav>
     </header>
 
-    <main class="container">
+    <main class="max-w-[900px] mx-auto my-4 md:my-10 px-4 md:px-6 py-4 md:py-6 bg-panel border-6 border-border rounded-md">
       {% if messages %}
-        <ul class="messages">
+        <ul class="list-none p-0 m-0 mb-4">
         {% for message in messages %}
-          <li class="message">{{ message }}</li>
+          <li class="p-2 border-l-6 border-accent my-1">{{ message }}</li>
         {% endfor %}
         </ul>
       {% endif %}
@@ -81,9 +82,14 @@
         const navOverlay = document.getElementById('nav-overlay');
 
         if (menuToggle && navLinks && navOverlay) {
+          // Show hamburger on mobile
+          if (window.innerWidth <= 768) {
+            menuToggle.classList.remove('hidden');
+          }
+
           menuToggle.addEventListener('click', function() {
-            const isActive = navLinks.classList.contains('active');
-            if (isActive) {
+            const isOpen = navLinks.classList.contains('!right-0');
+            if (isOpen) {
               closeMenu();
             } else {
               openMenu();
@@ -92,20 +98,32 @@
 
           navOverlay.addEventListener('click', closeMenu);
 
-          const navDrawerLinks = navLinks.querySelectorAll('.nav-drawer a');
+          const navDrawerLinks = navLinks.querySelectorAll('a');
           navDrawerLinks.forEach(link => link.addEventListener('click', closeMenu));
 
           function openMenu() {
-            navLinks.classList.add('active');
-            menuToggle.classList.add('active');
+            navLinks.classList.add('!right-0');
+            navOverlay.classList.remove('hidden');
+            navOverlay.classList.add('!opacity-100');
             menuToggle.setAttribute('aria-expanded', 'true');
+            // Animate hamburger to X
+            const lines = menuToggle.querySelectorAll('span');
+            lines[0].style.transform = 'rotate(45deg) translate(7px, 7px)';
+            lines[1].style.opacity = '0';
+            lines[2].style.transform = 'rotate(-45deg) translate(7px, -7px)';
             document.body.style.overflow = 'hidden';
           }
 
           function closeMenu() {
-            navLinks.classList.remove('active');
-            menuToggle.classList.remove('active');
+            navLinks.classList.remove('!right-0');
+            navOverlay.classList.add('hidden');
+            navOverlay.classList.remove('!opacity-100');
             menuToggle.setAttribute('aria-expanded', 'false');
+            // Reset hamburger animation
+            const lines = menuToggle.querySelectorAll('span');
+            lines[0].style.transform = '';
+            lines[1].style.opacity = '';
+            lines[2].style.transform = '';
             document.body.style.overflow = '';
           }
 
@@ -113,7 +131,12 @@
           window.addEventListener('resize', function() {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function() {
-              if (window.innerWidth > 640) closeMenu();
+              if (window.innerWidth > 768) {
+                closeMenu();
+                menuToggle.classList.add('hidden');
+              } else {
+                menuToggle.classList.remove('hidden');
+              }
             }, 250);
           });
         }

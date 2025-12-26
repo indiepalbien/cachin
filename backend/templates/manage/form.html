@@ -3,23 +3,87 @@
 {% block title %}Form — Manage{% endblock %}
 
 {% block content %}
-  <p><a href="{{ back_url|default:'javascript:history.back()' }}">← Volver</a></p>
-  <h1>{% if object %}Editar{% else %}Crear{% endif %} {{ model_verbose_name }}</h1>
+  <p><a href="{{ back_url|default:'javascript:history.back()' }}" class="text-accent font-bold hover:underline">← Volver</a></p>
+  <h1 class="text-2xl md:text-3xl font-extrabold mb-4">{% if object %}Editar{% else %}Crear{% endif %} {{ model_verbose_name }}</h1>
   <form method="post">
     {% csrf_token %}
     {% if back_url %}
       <input type="hidden" name="next" value="{{ back_url }}">
     {% endif %}
     {{ form.as_p }}
-    <div style="display:flex;gap:0.5rem;align-items:center;">
-      <button type="submit">Guardar</button>
+    <div class="flex gap-2 items-center mt-4">
+      <button type="submit" class="bg-accent text-white px-4 py-2 border-0 rounded font-bold cursor-pointer transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">Guardar</button>
       {% if delete_url %}
         <a href="{{ delete_url }}"
-           style="background:#dc2626;color:white;border:1px solid #b91c1c;padding:0.45rem 0.75rem;text-decoration:none;border-radius:4px;display:inline-block;"
+           class="bg-red-600 text-white border border-red-700 px-3 py-2 no-underline rounded inline-block transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px] flex items-center"
            onclick="return confirm('¿Estás seguro de eliminar este {{ model_verbose_name }}?');">
           Eliminar
         </a>
       {% endif %}
     </div>
   </form>
+
+  <style>
+    /* Style Django form fields */
+    form p {
+      margin-bottom: 1.25rem;
+    }
+
+    form label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
+    form input[type="text"],
+    form input[type="email"],
+    form input[type="password"],
+    form input[type="number"],
+    form input[type="date"],
+    form select,
+    form textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 3px solid var(--border);
+      background: #fff;
+      font-size: 1rem;
+      border-radius: 2px;
+      font-family: inherit;
+      min-height: 44px;
+    }
+
+    form input:focus,
+    form select:focus,
+    form textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255, 0, 102, 0.1);
+    }
+
+    form textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    form ul.errorlist {
+      list-style: none;
+      padding: 0;
+      margin: 0.5rem 0 0 0;
+      color: #dc2626;
+      font-size: 0.875rem;
+    }
+
+    form ul.errorlist li {
+      margin: 0.25rem 0;
+    }
+
+    form .helptext {
+      display: block;
+      margin-top: 0.25rem;
+      color: #666;
+      font-size: 0.875rem;
+      font-style: italic;
+    }
+  </style>
 {% endblock %}

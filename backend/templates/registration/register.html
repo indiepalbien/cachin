@@ -5,48 +5,79 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Crear cuenta — App-Finanzas</title>
-    <link rel="stylesheet" href="{% static 'expenses/style.css' %}">
+    <link rel="stylesheet" href="{% static 'expenses/output.css' %}">
   </head>
   <body>
     <header>
-      <nav class="nav">
-        <a class="brand" href="/">App-Finanzas</a>
+      <nav class="flex items-center justify-between gap-4 bg-panel px-4 py-3 border-b-6 border-border shadow-brutal-lg">
+        <a class="font-extrabold tracking-wider no-underline text-muted px-3 py-2 border-4 border-border bg-transparent hover:bg-accent hover:text-white transition-colors" href="/">App-Finanzas</a>
       </nav>
     </header>
 
-    <main class="container login-container">
-      <h1>Crear cuenta</h1>
+    <main class="max-w-sm mx-auto mt-8 md:mt-12 px-4 md:px-6 py-6 bg-panel border-6 border-border rounded-md">
+      <h1 class="text-2xl md:text-3xl font-extrabold mb-4">Crear cuenta</h1>
 
       {% if messages %}
-      <ul class="messages">
+      <ul class="list-none p-0 m-0 mb-4">
         {% for message in messages %}
-        <li class="message">{{ message }}</li>
+        <li class="p-2 border-l-6 border-accent my-1">{{ message }}</li>
         {% endfor %}
       </ul>
       {% endif %}
 
-      <form method="post" class="login-form">
+      <form method="post" class="mt-6 mb-6">
         {% csrf_token %}
         {% for field in form %}
-          <div class="form-group">
+          <div class="mb-5">
             {{ field.label_tag }}
             {{ field }}
             {% if field.errors %}
-              <ul class="field-errors">
+              <ul class="list-none p-0 mt-2 mb-0 text-red-600 text-sm">
                 {% for error in field.errors %}
-                  <li>{{ error }}</li>
+                  <li class="my-1">{{ error }}</li>
                 {% endfor %}
               </ul>
             {% endif %}
             {% if field.help_text %}
-              <small class="help-text">{{ field.help_text|safe }}</small>
+              <small class="block mt-2 text-slate-600 text-sm italic">{{ field.help_text|safe }}</small>
             {% endif %}
           </div>
         {% endfor %}
-        <button type="submit" class="btn-primary">Crear cuenta</button>
+        <button type="submit" class="w-full bg-accent text-white border-0 px-5 py-3 font-extrabold rounded-sm cursor-pointer text-base transition-all hover:-translate-y-1 hover:shadow-brutal active:translate-y-0 min-h-[44px]">Crear cuenta</button>
       </form>
 
-      <p class="auth-link">¿Ya tenés cuenta? <a href="{% url 'login' %}">Ingresar</a></p>
+      <p class="text-center text-base mt-6">¿Ya tenés cuenta? <a href="{% url 'login' %}" class="text-accent font-bold no-underline hover:underline">Ingresar</a></p>
     </main>
+
+    <style>
+      /* Style form fields rendered by Django */
+      form input[type="text"],
+      form input[type="email"],
+      form input[type="password"] {
+        width: 100%;
+        padding: 0.75rem;
+        border: 3px solid var(--border);
+        background: #fff;
+        font-size: 1rem;
+        border-radius: 2px;
+        font-family: inherit;
+        min-height: 44px;
+      }
+
+      form input[type="text"]:focus,
+      form input[type="email"]:focus,
+      form input[type="password"]:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(255, 0, 102, 0.1);
+      }
+
+      form label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+      }
+    </style>
   </body>
 </html>
