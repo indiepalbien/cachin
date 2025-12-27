@@ -166,8 +166,13 @@
               aria-label="Editar transacción"
               class="absolute md:relative top-2 right-2 md:top-auto md:right-auto flex items-center justify-center w-8 h-8 md:w-6 md:h-6 text-muted no-underline text-sm md:text-xs bg-accent md:bg-transparent text-white md:text-muted rounded">🔧</a>
 
-            <!-- Mobile: Full width description -->
-            <span class="flex-[0_0_calc(100%-40px)] md:flex-[2] md:min-w-[160px] font-semibold md:font-normal text-base md:text-sm text-muted break-words">{{ t.description }}</span>
+            <!-- Mobile: Full width description with category -->
+            <span class="flex-[0_0_calc(100%-40px)] md:flex-[2] md:min-w-[160px] text-base md:text-sm text-muted break-words">
+              <span class="font-semibold md:font-normal">{{ t.description }}</span>
+              {% if t.category %}
+                <span class="block md:inline text-xs text-slate-500 mt-1 md:mt-0 md:ml-2">{{ t.category.name }}</span>
+              {% endif %}
+            </span>
 
             <!-- Mobile: Amount, currency, date on one row -->
             <span class="flex-[0_0_auto] font-bold md:font-normal text-base md:text-sm text-accent md:text-muted md:w-[120px] md:text-right">{{ t.amount }}</span>
