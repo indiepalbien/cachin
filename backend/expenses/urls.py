@@ -48,7 +48,8 @@ urlpatterns = [
     path("manage/emails/update-forwarding/", views.update_forwarding_email, name="update_forwarding_email"),
     # Pending Transactions
     path("manage/pending/", views.PendingTransactionListView.as_view(), name="manage_pending_transactions"),
-    # Quick-add transaction (AJAX-friendly) and suggestion endpoints
+    # Quick-add transaction page and API endpoint
+    path("quick-add/", views.quick_add_page, name="quick_add_page"),
     path("quick-transaction/", views.quick_transaction, name="quick_transaction"),
     path("suggest/<str:kind>/", views.suggest, name="suggest"),
     

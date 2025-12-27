@@ -1056,6 +1056,29 @@ def profile(request):
     return render(request, 'profile.html', context)
 
 
+@login_required
+def quick_add_page(request):
+    """Dedicated page for quick transaction entry."""
+    user = request.user
+
+    # Get user's existing options for autocomplete
+    categories = Category.objects.filter(user=user).order_by('name').values_list('name', flat=True)
+    projects = Project.objects.filter(user=user).order_by('name').values_list('name', flat=True)
+    payees = Payee.objects.filter(user=user).order_by('name').values_list('name', flat=True)
+    sources = Source.objects.filter(user=user).order_by('name').values_list('name', flat=True)
+
+    context = {
+        'user': user,
+        'qa_categories': list(categories),
+        'qa_projects': list(projects),
+        'qa_payees': list(payees),
+        'qa_sources': list(sources),
+    }
+    context.update(_get_onboarding_context(user))
+
+    return render(request, 'expenses/quick_add.html', context)
+
+
 # Bulk transaction import views
 @login_required
 def bulk_add_view(request):
