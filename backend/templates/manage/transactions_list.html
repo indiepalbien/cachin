@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Transacciones{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'profile' %}" class="text-accent font-bold hover:underline">← Volver al perfil</a></p>
+<h1 class="text-2xl md:text-3xl font-extrabold mb-4">Transacciones</h1>
+
+<!-- Filters Section -->
+<section class="my-4 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal">
+  <div class="flex justify-between items-center mb-3">
+    <h2 class="text-lg md:text-xl font-extrabold m-0">Filtros</h2>
+    <button type="button" id="toggle-filters" class="bg-accent text-white px-4 py-2 text-sm md:text-base border-0 rounded font-bold cursor-pointer transition-all shadow-[3px_3px_0_rgba(255,0,102,0.2)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_rgba(255,0,102,0.3)]">
+      <span id="toggle-text">Mostrar filtros</span>
+    </button>
+  </div>
+  <form method="get" id="filters-form">
+    <div id="filters-grid" class="hidden grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div>
+        <label class="block font-semibold mb-1 text-sm">Buscar</label>
+        <input type="text" name="search" value="{{ current_filters.search }}" placeholder="Descripción..." class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+      </div>
+      <div>
+        <label class="block font-semibold mb-1 text-sm">Categoría</label>
+        <select name="category" class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+          <option value="">Todas</option>
+          <option value="__null__" {% if current_filters.category == '__null__' %}selected{% endif %}>❌ Sin categoría</option>
+          {% for cat in categories %}
+            <option value="{{ cat.name }}" {% if current_filters.category == cat.name %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block font-semibold mb-1 text-sm">Origen</label>
+        <select name="source" class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+          <option value="">Todos</option>
+          <option value="__null__" {% if current_filters.source == '__null__' %}selected{% endif %}>❌ Sin origen</option>
+          {% for src in sources %}
+            <option value="{{ src.name }}" {% if current_filters.source == src.name %}selected{% endif %}>{{ src.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block font-semibold mb-1 text-sm">Proyecto</label>
+        <select name="project" class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+          <option value="">Todos</option>
+          <option value="__null__" {% if current_filters.project == '__null__' %}selected{% endif %}>❌ Sin proyecto</option>
+          {% for proj in projects %}
+            <option value="{{ proj.name }}" {% if current_filters.project == proj.name %}selected{% endif %}>{{ proj.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block font-semibold mb-1 text-sm">Beneficiario</label>
+        <select name="payee" class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+          <option value="">Todos</option>
+          <option value="__null__" {% if current_filters.payee == '__null__' %}selected{% endif %}>❌ Sin beneficiario</option>
+          {% for p in payees %}
+            <option value="{{ p.name }}" {% if current_filters.payee == p.name %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block font-semibold mb-1 text-sm">Moneda</label>
+        <select name="currency" class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+          <option value="">Todas</option>
+          {% for curr in currencies %}
+            <option value="{{ curr }}" {% if current_filters.currency == curr %}selected{% endif %}>{{ curr }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block font-semibold mb-1 text-sm">Mes (YYYY-MM)</label>
+        <input type="text" name="month" value="{{ current_filters.month }}" placeholder="2024-12" pattern="\d{4}-\d{2}" class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+      </div>
+      <div>
+        <label class="block font-semibold mb-1 text-sm">Desde</label>
+        <input type="date" name="date_from" value="{{ current_filters.date_from }}" class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+      </div>
+      <div>
+        <label class="block font-semibold mb-1 text-sm">Hasta</label>
+        <input type="date" name="date_to" value="{{ current_filters.date_to }}" class="w-full px-3 py-2 border-2 border-slate-300 rounded focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+      </div>
+      <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-3">
+        <button type="submit" class="flex-1 bg-accent text-white px-4 py-2 border-0 rounded font-bold cursor-pointer transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">Filtrar</button>
+        <a href="{% url 'expenses:manage_transactions' %}" class="flex-1 bg-slate-500 text-white px-4 py-2 no-underline rounded text-center font-bold transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px] flex items-center justify-center">Limpiar</a>
+      </div>
+    </div>
+  </form>
+
+  <!-- Active Filters Display -->
+  {% if current_filters.search or current_filters.category or current_filters.source or current_filters.project or current_filters.payee or current_filters.currency or current_filters.month or current_filters.date_from or current_filters.date_to %}
+  <div class="mt-3 pt-3 border-t border-slate-200">
+    <p class="text-xs font-bold text-slate-600 uppercase mb-2">Filtros activos:</p>
+    <div class="flex flex-wrap gap-2">
+      {% if current_filters.search %}
+      <a href="?{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.source %}source={{ current_filters.source }}&{% endif %}{% if current_filters.project %}project={{ current_filters.project }}&{% endif %}{% if current_filters.payee %}payee={{ current_filters.payee }}&{% endif %}{% if current_filters.currency %}currency={{ current_filters.currency }}&{% endif %}{% if current_filters.month %}month={{ current_filters.month }}&{% endif %}{% if current_filters.date_from %}date_from={{ current_filters.date_from }}&{% endif %}{% if current_filters.date_to %}date_to={{ current_filters.date_to }}{% endif %}"
+         class="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 border-2 border-slate-300 rounded-full text-sm font-semibold text-muted no-underline hover:bg-slate-200 hover:border-slate-400 transition-all min-h-[36px]">
+        <span>🔍 "{{ current_filters.search }}"</span>
+        <span class="text-slate-500 hover:text-red-600">✕</span>
+      </a>
+      {% endif %}
+
+      {% if current_filters.category %}
+      <a href="?{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if current_filters.source %}source={{ current_filters.source }}&{% endif %}{% if current_filters.project %}project={{ current_filters.project }}&{% endif %}{% if current_filters.payee %}payee={{ current_filters.payee }}&{% endif %}{% if current_filters.currency %}currency={{ current_filters.currency }}&{% endif %}{% if current_filters.month %}month={{ current_filters.month }}&{% endif %}{% if current_filters.date_from %}date_from={{ current_filters.date_from }}&{% endif %}{% if current_filters.date_to %}date_to={{ current_filters.date_to }}{% endif %}"
+         class="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 border-2 border-blue-300 rounded-full text-sm font-semibold text-muted no-underline hover:bg-blue-200 hover:border-blue-400 transition-all min-h-[36px]">
+        <span>📁 {% if current_filters.category == "__null__" %}Sin categoría{% else %}{{ current_filters.category }}{% endif %}</span>
+        <span class="text-slate-500 hover:text-red-600">✕</span>
+      </a>
+      {% endif %}
+
+      {% if current_filters.source %}
+      <a href="?{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.project %}project={{ current_filters.project }}&{% endif %}{% if current_filters.payee %}payee={{ current_filters.payee }}&{% endif %}{% if current_filters.currency %}currency={{ current_filters.currency }}&{% endif %}{% if current_filters.month %}month={{ current_filters.month }}&{% endif %}{% if current_filters.date_from %}date_from={{ current_filters.date_from }}&{% endif %}{% if current_filters.date_to %}date_to={{ current_filters.date_to }}{% endif %}"
+         class="inline-flex items-center gap-2 px-3 py-1 bg-green-100 border-2 border-green-300 rounded-full text-sm font-semibold text-muted no-underline hover:bg-green-200 hover:border-green-400 transition-all min-h-[36px]">
+        <span>💳 {% if current_filters.source == "__null__" %}Sin origen{% else %}{{ current_filters.source }}{% endif %}</span>
+        <span class="text-slate-500 hover:text-red-600">✕</span>
+      </a>
+      {% endif %}
+
+      {% if current_filters.project %}
+      <a href="?{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.source %}source={{ current_filters.source }}&{% endif %}{% if current_filters.payee %}payee={{ current_filters.payee }}&{% endif %}{% if current_filters.currency %}currency={{ current_filters.currency }}&{% endif %}{% if current_filters.month %}month={{ current_filters.month }}&{% endif %}{% if current_filters.date_from %}date_from={{ current_filters.date_from }}&{% endif %}{% if current_filters.date_to %}date_to={{ current_filters.date_to }}{% endif %}"
+         class="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 border-2 border-purple-300 rounded-full text-sm font-semibold text-muted no-underline hover:bg-purple-200 hover:border-purple-400 transition-all min-h-[36px]">
+        <span>🎯 {% if current_filters.project == "__null__" %}Sin proyecto{% else %}{{ current_filters.project }}{% endif %}</span>
+        <span class="text-slate-500 hover:text-red-600">✕</span>
+      </a>
+      {% endif %}
+
+      {% if current_filters.payee %}
+      <a href="?{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.source %}source={{ current_filters.source }}&{% endif %}{% if current_filters.project %}project={{ current_filters.project }}&{% endif %}{% if current_filters.currency %}currency={{ current_filters.currency }}&{% endif %}{% if current_filters.month %}month={{ current_filters.month }}&{% endif %}{% if current_filters.date_from %}date_from={{ current_filters.date_from }}&{% endif %}{% if current_filters.date_to %}date_to={{ current_filters.date_to }}{% endif %}"
+         class="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 border-2 border-yellow-300 rounded-full text-sm font-semibold text-muted no-underline hover:bg-yellow-200 hover:border-yellow-400 transition-all min-h-[36px]">
+        <span>👤 {% if current_filters.payee == "__null__" %}Sin beneficiario{% else %}{{ current_filters.payee }}{% endif %}</span>
+        <span class="text-slate-500 hover:text-red-600">✕</span>
+      </a>
+      {% endif %}
+
+      {% if current_filters.currency %}
+      <a href="?{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.source %}source={{ current_filters.source }}&{% endif %}{% if current_filters.project %}project={{ current_filters.project }}&{% endif %}{% if current_filters.payee %}payee={{ current_filters.payee }}&{% endif %}{% if current_filters.month %}month={{ current_filters.month }}&{% endif %}{% if current_filters.date_from %}date_from={{ current_filters.date_from }}&{% endif %}{% if current_filters.date_to %}date_to={{ current_filters.date_to }}{% endif %}"
+         class="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 border-2 border-amber-300 rounded-full text-sm font-semibold text-muted no-underline hover:bg-amber-200 hover:border-amber-400 transition-all min-h-[36px]">
+        <span>💰 {{ current_filters.currency }}</span>
+        <span class="text-slate-500 hover:text-red-600">✕</span>
+      </a>
+      {% endif %}
+
+      {% if current_filters.month %}
+      <a href="?{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.source %}source={{ current_filters.source }}&{% endif %}{% if current_filters.project %}project={{ current_filters.project }}&{% endif %}{% if current_filters.payee %}payee={{ current_filters.payee }}&{% endif %}{% if current_filters.currency %}currency={{ current_filters.currency }}&{% endif %}{% if current_filters.date_from %}date_from={{ current_filters.date_from }}&{% endif %}{% if current_filters.date_to %}date_to={{ current_filters.date_to }}{% endif %}"
+         class="inline-flex items-center gap-2 px-3 py-1 bg-pink-100 border-2 border-pink-300 rounded-full text-sm font-semibold text-muted no-underline hover:bg-pink-200 hover:border-pink-400 transition-all min-h-[36px]">
+        <span>📅 {{ current_filters.month }}</span>
+        <span class="text-slate-500 hover:text-red-600">✕</span>
+      </a>
+      {% endif %}
+
+      {% if current_filters.date_from %}
+      <a href="?{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.source %}source={{ current_filters.source }}&{% endif %}{% if current_filters.project %}project={{ current_filters.project }}&{% endif %}{% if current_filters.payee %}payee={{ current_filters.payee }}&{% endif %}{% if current_filters.currency %}currency={{ current_filters.currency }}&{% endif %}{% if current_filters.month %}month={{ current_filters.month }}&{% endif %}{% if current_filters.date_to %}date_to={{ current_filters.date_to }}{% endif %}"
+         class="inline-flex items-center gap-2 px-3 py-1 bg-teal-100 border-2 border-teal-300 rounded-full text-sm font-semibold text-muted no-underline hover:bg-teal-200 hover:border-teal-400 transition-all min-h-[36px]">
+        <span>📆 Desde: {{ current_filters.date_from }}</span>
+        <span class="text-slate-500 hover:text-red-600">✕</span>
+      </a>
+      {% endif %}
+
+      {% if current_filters.date_to %}
+      <a href="?{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.source %}source={{ current_filters.source }}&{% endif %}{% if current_filters.project %}project={{ current_filters.project }}&{% endif %}{% if current_filters.payee %}payee={{ current_filters.payee }}&{% endif %}{% if current_filters.currency %}currency={{ current_filters.currency }}&{% endif %}{% if current_filters.month %}month={{ current_filters.month }}&{% endif %}{% if current_filters.date_from %}date_from={{ current_filters.date_from }}{% endif %}"
+         class="inline-flex items-center gap-2 px-3 py-1 bg-cyan-100 border-2 border-cyan-300 rounded-full text-sm font-semibold text-muted no-underline hover:bg-cyan-200 hover:border-cyan-400 transition-all min-h-[36px]">
+        <span>📆 Hasta: {{ current_filters.date_to }}</span>
+        <span class="text-slate-500 hover:text-red-600">✕</span>
+      </a>
+      {% endif %}
+
+      <!-- Clear all filters -->
+      <a href="{% url 'expenses:manage_transactions' %}" class="inline-flex items-center gap-2 px-3 py-1 bg-red-100 border-2 border-red-300 rounded-full text-sm font-bold text-red-700 no-underline hover:bg-red-200 hover:border-red-400 transition-all min-h-[36px]">
+        <span>Limpiar todos</span>
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if page_obj %}
+    <p class="mt-3 mb-0 text-muted text-sm">Total: {{ page_obj.paginator.count }} transacciones</p>
+  {% endif %}
+</section>
+
+<!-- Transactions List -->
+<section class="my-4 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal">
+  <h2 class="mt-0 text-lg md:text-xl font-extrabold">Lista de Transacciones</h2>
+  {% if page_obj and page_obj.object_list %}
+    <p class="mt-0 mb-4 text-muted text-sm">Mostrando {{ page_obj.object_list|length }} de {{ page_obj.paginator.count }}.</p>
+
+    <!-- Single column list, wider cards -->
+    <div class="flex flex-col gap-3">
+      {% for tx in page_obj %}
+        <form id="tx-{{ tx.id }}" action="" method="post" class="relative p-4 border-3 border-border bg-white rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="update_tx">
+          <input type="hidden" name="tx_id" value="{{ tx.id }}">
+
+          <!-- Header: Date, Description, Amount in one row -->
+          <div class="flex flex-wrap md:flex-nowrap items-start gap-3 mb-3 pb-3 border-b-2 border-slate-100">
+            <!-- Date with action buttons -->
+            <div class="text-sm font-semibold text-slate-500 shrink-0 w-full md:w-auto order-1 flex items-center gap-2">
+              <span>{{ tx.date }}</span>
+              <!-- Small icon buttons -->
+              <div class="flex items-center gap-1">
+                <a href="{% url 'expenses:manage_transaction_edit' tx.pk %}?next={{ request.get_full_path|urlencode }}"
+                   title="Editar"
+                   class="text-slate-400 hover:text-accent transition-colors bg-transparent no-underline p-1 text-base leading-none inline-flex items-center justify-center">
+                  ✏️
+                </a>
+                <button type="button"
+                        class="text-slate-400 hover:text-red-600 transition-colors cursor-pointer bg-transparent border-0 p-1 text-base leading-none"
+                        title="Eliminar"
+                        hx-post="{% url 'expenses:manage_transactions' %}"
+                        hx-vals='{"action": "delete_tx", "tx_id": "{{ tx.id }}"}'
+                        hx-confirm="¿Eliminar esta transacción?"
+                        hx-target="#tx-{{ tx.id }}"
+                        hx-swap="outerHTML swap:300ms">
+                  🗑️
+                </button>
+              </div>
+            </div>
+            <!-- Amount + Currency on mobile, right side on desktop -->
+            <div class="font-extrabold text-lg whitespace-nowrap text-muted px-3 py-1 bg-slate-100 rounded shrink-0 ml-auto md:ml-0 order-2 md:order-3">
+              {{ tx.currency }} {{ tx.amount }}
+            </div>
+            <!-- Description - full width on mobile, flex-1 on desktop -->
+            <div class="w-full md:flex-1 font-semibold text-base text-muted leading-snug break-words order-3 md:order-2">
+              {{ tx.description }}
+            </div>
+          </div>
+
+          <!-- Save status indicator -->
+          <div id="save-status-{{ tx.id }}" class="absolute top-3 right-3 text-xs px-2 py-1 rounded bg-white font-bold z-10">
+            <span class="spinner htmx-indicator inline-block"></span>
+            <span class="status-text"></span>
+          </div>
+
+          <!-- Fields in 3 columns on desktop, 1 column on mobile -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">📁 Categoría</label>
+              <select name="category_id"
+                      hx-post="{% url 'expenses:manage_transactions' %}"
+                      hx-include="[name='tx_id'],[name='action'],[name='source_id'],[name='project_id'],[name='comments']"
+                      hx-trigger="change"
+                      hx-target="#save-status-{{ tx.id }}"
+                      hx-swap="innerHTML"
+                      hx-indicator="#save-status-{{ tx.id }}"
+                      class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all cursor-pointer hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+                <option value="">-</option>
+                {% for cat in categories %}
+                  <option value="{{ cat.id }}" {% if tx.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">💳 Origen</label>
+              <select name="source_id"
+                      hx-post="{% url 'expenses:manage_transactions' %}"
+                      hx-include="[name='tx_id'],[name='action'],[name='category_id'],[name='project_id'],[name='comments']"
+                      hx-trigger="change"
+                      hx-target="#save-status-{{ tx.id }}"
+                      hx-swap="innerHTML"
+                      hx-indicator="#save-status-{{ tx.id }}"
+                      class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all cursor-pointer hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+                <option value="">-</option>
+                {% for src in sources %}
+                  <option value="{{ src.id }}" {% if tx.source_id == src.id %}selected{% endif %}>{{ src.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">🎯 Proyecto</label>
+              <select name="project_id"
+                      hx-post="{% url 'expenses:manage_transactions' %}"
+                      hx-include="[name='tx_id'],[name='action'],[name='category_id'],[name='source_id'],[name='comments']"
+                      hx-trigger="change"
+                      hx-target="#save-status-{{ tx.id }}"
+                      hx-swap="innerHTML"
+                      hx-indicator="#save-status-{{ tx.id }}"
+                      class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all cursor-pointer hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+                <option value="">-</option>
+                {% for proj in projects %}
+                  <option value="{{ proj.id }}" {% if tx.project_id == proj.id %}selected{% endif %}>{{ proj.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Footer: Comment -->
+          <div class="flex flex-col gap-1 pt-3 border-t-2 border-slate-100">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">💬 Comentario</label>
+            <textarea name="comments"
+                      rows="1"
+                      placeholder="Añadir nota..."
+                      hx-post="{% url 'expenses:manage_transactions' %}"
+                      hx-include="[name='tx_id'],[name='action'],[name='category_id'],[name='source_id'],[name='project_id']"
+                      hx-trigger="input changed delay:1s"
+                      hx-target="#save-status-{{ tx.id }}"
+                      hx-swap="innerHTML"
+                      hx-indicator="#save-status-{{ tx.id }}"
+                      class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted resize-none rounded min-h-[44px] leading-snug transition-all hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20">{{ tx.comments }}</textarea>
+          </div>
+        </form>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_previous or page_obj.has_next %}
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mt-4 pt-3 border-t-2 border-border">
+        <div>
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if current_filters.search %}&search={{ current_filters.search }}{% endif %}{% if current_filters.category %}&category={{ current_filters.category }}{% endif %}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.project %}&project={{ current_filters.project }}{% endif %}{% if current_filters.payee %}&payee={{ current_filters.payee }}{% endif %}{% if current_filters.currency %}&currency={{ current_filters.currency }}{% endif %}{% if current_filters.month %}&month={{ current_filters.month }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}" class="text-accent font-bold no-underline transition-all hover:-translate-y-0.5 inline-block min-h-[44px] flex items-center">« Anterior</a>
+          {% endif %}
+        </div>
+        <div class="font-semibold">
+          Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </div>
+        <div>
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if current_filters.search %}&search={{ current_filters.search }}{% endif %}{% if current_filters.category %}&category={{ current_filters.category }}{% endif %}{% if current_filters.source %}&source={{ current_filters.source }}{% endif %}{% if current_filters.project %}&project={{ current_filters.project }}{% endif %}{% if current_filters.payee %}&payee={{ current_filters.payee }}{% endif %}{% if current_filters.currency %}&currency={{ current_filters.currency }}{% endif %}{% if current_filters.month %}&month={{ current_filters.month }}{% endif %}{% if current_filters.date_from %}&date_from={{ current_filters.date_from }}{% endif %}{% if current_filters.date_to %}&date_to={{ current_filters.date_to }}{% endif %}" class="text-accent font-bold no-underline transition-all hover:-translate-y-0.5 inline-block min-h-[44px] flex items-center">Siguiente »</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <p class="m-0">No se encontraron transacciones.</p>
+  {% endif %}
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const toggleBtn = document.getElementById('toggle-filters');
+  const toggleText = document.getElementById('toggle-text');
+  const filtersGrid = document.getElementById('filters-grid');
+
+  if (!toggleBtn || !toggleText || !filtersGrid) {
+    console.error('Filter elements not found');
+    return;
+  }
+
+  // Ensure filters start hidden and set initial text
+  filtersGrid.classList.add('hidden');
+  filtersGrid.classList.remove('grid');
+  toggleText.textContent = 'Mostrar filtros';
+
+  toggleBtn.addEventListener('click', function() {
+    const isHidden = filtersGrid.classList.contains('hidden');
+
+    if (isHidden) {
+      // Show filters
+      filtersGrid.classList.remove('hidden');
+      filtersGrid.classList.add('grid');
+      toggleText.textContent = 'Ocultar filtros';
+    } else {
+      // Hide filters
+      filtersGrid.classList.add('hidden');
+      filtersGrid.classList.remove('grid');
+      toggleText.textContent = 'Mostrar filtros';
+    }
+  });
+});
+</script>
+
+{% endblock %}

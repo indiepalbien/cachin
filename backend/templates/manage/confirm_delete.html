@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar {{ model_verbose_name }}{% endblock %}
+
+{% block content %}
+  <p><a href="{{ back_url|default:list_url|default:'javascript:history.back()' }}" class="text-accent font-bold hover:underline">← Volver</a></p>
+  <h1 class="text-2xl md:text-3xl font-extrabold mb-4">Eliminar {{ model_verbose_name }}</h1>
+
+  <div class="my-4 p-4 border-3 border-red-600 bg-red-50 rounded shadow-brutal">
+    <p class="text-lg font-bold text-red-800 mb-2">⚠️ ¿Estás seguro?</p>
+    <p class="text-red-700">Vas a eliminar permanentemente: <strong>"{{ object }}"</strong></p>
+    <p class="text-sm text-red-600 mt-2">Esta acción no se puede deshacer.</p>
+  </div>
+
+  <form method="post" class="flex gap-3 items-center">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ back_url|default:list_url }}">
+    <button type="submit"
+            class="bg-red-600 text-white px-4 py-2 border-0 rounded font-bold cursor-pointer transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">
+      Sí, eliminar
+    </button>
+    <a href="{{ back_url|default:list_url|default:'javascript:history.back()' }}"
+       class="bg-gray-300 text-gray-800 px-4 py-2 no-underline rounded font-bold transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px] inline-flex items-center">
+      Cancelar
+    </a>
+  </form>
+{% endblock %}

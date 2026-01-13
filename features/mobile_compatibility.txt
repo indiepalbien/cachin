@@ -1,0 +1,7 @@
+
+Nuestra app web funciona bien pero nos gustaría poder usarla también en mobile.
+
+En este momento eso no funciona bien ya que muchas vistas tienen "overflow", el menu no es muy responsive, etc.
+
+Queremos usar django-pwa para mejorar la experiencia en mobile y aparte re-pensar algunas de las vistas
+para que toda la información entre bien y sea fácil de leer.

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Subir Imágenes de Transacciones{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <section class="mb-6">
+        <h1 class="text-2xl md:text-3xl font-extrabold mb-2 text-muted">
+            📷 Agregar Transacciones desde Imágenes
+        </h1>
+        <p class="text-slate-600">
+            Sube fotos de recibos, facturas o capturas de pantalla de transacciones.
+            Nuestro sistema extraerá automáticamente la información usando IA.
+        </p>
+    </section>
+
+    <!-- Upload Form Card -->
+    <section class="p-4 md:p-6 border-3 border-accent bg-panel rounded shadow-brutal mb-4">
+        <form method="post" enctype="multipart/form-data" id="imageUploadForm">
+            {% csrf_token %}
+
+            <!-- File Input -->
+            <div class="mb-4">
+                <label for="id_images" class="block font-bold mb-2 text-base text-muted">Imágenes</label>
+                <input type="file"
+                       name="images"
+                       accept="image/*"
+                       multiple
+                       id="id_images"
+                       class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 cursor-pointer min-h-[44px]">
+                <small class="block mt-2 text-sm text-slate-600">
+                    Sube fotos de recibos, facturas o capturas de transacciones. Puedes seleccionar múltiples archivos.
+                </small>
+                {% if form.images.errors %}
+                    <div class="text-red-600 font-semibold mt-2">{{ form.images.errors }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Paste from clipboard info -->
+            <div class="mb-4 p-4 bg-blue-50 border-2 border-blue-300 rounded">
+                <p class="text-sm font-semibold text-blue-800">
+                    ℹ️ <strong>Para pegar imágenes:</strong> Copia una imagen y presiona <kbd class="px-2 py-1 bg-white border-2 border-border rounded text-xs font-mono">Ctrl+V</kbd> (Windows/Linux) o <kbd class="px-2 py-1 bg-white border-2 border-border rounded text-xs font-mono">Cmd+V</kbd> (Mac) en esta página
+                </p>
+            </div>
+
+            <!-- Preview area for selected/pasted images -->
+            <div id="imagePreview" class="mb-4" style="display: none;">
+                <h6 class="font-bold text-base text-muted mb-2">Imágenes seleccionadas:</h6>
+                <div id="previewContainer" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col gap-3">
+                <button type="submit"
+                        id="submitBtn"
+                        class="w-full bg-accent text-white px-4 py-3 border-0 rounded font-extrabold cursor-pointer text-base transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">
+                    ⬆️ Subir Imágenes
+                </button>
+                <a href="{% url 'profile' %}"
+                   class="block w-full text-center px-4 py-3 border-3 border-border bg-white text-muted rounded font-bold cursor-pointer transition-all hover:bg-slate-100 hover:border-slate-400 min-h-[44px] no-underline">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </section>
+
+    <!-- Instructions card -->
+    <section class="p-4 md:p-6 border-3 border-border bg-panel rounded shadow-brutal">
+        <h6 class="font-extrabold text-base text-muted mb-3">💡 Consejos para mejores resultados:</h6>
+        <ul class="list-disc pl-5 space-y-1 text-slate-600">
+            <li>Asegúrate de que el texto sea legible y bien iluminado</li>
+            <li>Incluye la fecha, monto y descripción de la transacción</li>
+            <li>Puedes subir múltiples imágenes a la vez</li>
+            <li>Formatos soportados: JPG, PNG, HEIC</li>
+        </ul>
+    </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('id_images');
+    const previewDiv = document.getElementById('imagePreview');
+    const previewContainer = document.getElementById('previewContainer');
+    const form = document.getElementById('imageUploadForm');
+
+    // Handle file selection
+    fileInput.addEventListener('change', function(e) {
+        updatePreview();
+    });
+
+    // Global paste event (Ctrl/Cmd+V) - This is the most reliable method
+    document.addEventListener('paste', function(e) {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        let hasImage = false;
+        const dt = new DataTransfer();
+
+        // Keep existing files
+        Array.from(fileInput.files).forEach(file => dt.items.add(file));
+
+        for (let item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const blob = item.getAsFile();
+                if (blob) {
+                    const file = new File([blob], `pasted-${Date.now()}.png`, { type: blob.type });
+                    dt.items.add(file);
+                    hasImage = true;
+                }
+            }
+        }
+
+        if (hasImage) {
+            fileInput.files = dt.files;
+            updatePreview();
+
+            // Show success message
+            const alert = document.createElement('div');
+            alert.className = 'p-3 bg-green-100 border-2 border-green-300 rounded mb-3';
+            alert.innerHTML = '✓ Imagen pegada correctamente.';
+            previewDiv.parentElement.insertBefore(alert, previewDiv);
+            setTimeout(() => alert.remove(), 3000);
+        }
+    });
+
+    function updatePreview() {
+        const files = fileInput.files;
+
+        if (files.length === 0) {
+            previewDiv.style.display = 'none';
+            return;
+        }
+
+        previewDiv.style.display = 'block';
+        previewContainer.innerHTML = '';
+
+        Array.from(files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const div = document.createElement('div');
+                div.className = 'relative w-24 h-24 md:w-28 md:h-28';
+
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'w-full h-full object-cover border-3 border-border rounded';
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full font-bold text-sm border-2 border-white cursor-pointer hover:bg-red-600 transition-colors flex items-center justify-center';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = function() {
+                    removeFile(index);
+                };
+
+                div.appendChild(img);
+                div.appendChild(removeBtn);
+                previewContainer.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function removeFile(index) {
+        const files = Array.from(fileInput.files);
+        files.splice(index, 1);
+
+        // Rebuild DataTransfer
+        const dt = new DataTransfer();
+        files.forEach(file => dt.items.add(file));
+        fileInput.files = dt.files;
+
+        updatePreview();
+    }
+});
+</script>
+
+<style>
+#previewContainer {
+    max-height: 300px;
+    overflow-y: auto;
+}
+</style>
+{% endblock %}

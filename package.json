@@ -1,0 +1,12 @@
+{
+  "name": "cachin",
+  "version": "1.0.0",
+  "description": "Financial tracking app with Tailwind CSS",
+  "scripts": {
+    "build:css": "tailwindcss -i ./backend/expenses/static/expenses/input.css -o ./backend/expenses/static/expenses/output.css --minify",
+    "watch:css": "tailwindcss -i ./backend/expenses/static/expenses/input.css -o ./backend/expenses/static/expenses/output.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}

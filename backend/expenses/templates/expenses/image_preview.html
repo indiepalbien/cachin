@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Vista Previa de Imágenes{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <section class="mb-6">
+        <div class="flex flex-wrap justify-between items-center gap-3">
+            <h1 class="text-2xl md:text-3xl font-extrabold text-muted">
+                🖼️ Vista Previa de Imágenes
+            </h1>
+            <span class="px-3 py-1 bg-slate-200 text-slate-700 rounded font-bold border-2 border-slate-300">
+                {{ images.count }} imagen(es)
+            </span>
+        </div>
+        <p class="text-slate-600 mt-2">
+            Revisa las imágenes antes de procesarlas. Puedes agregar más o eliminar las que no necesites.
+        </p>
+    </section>
+
+    <!-- Images Card -->
+    <section class="p-4 md:p-6 border-3 border-accent bg-panel rounded shadow-brutal mb-4">
+        <!-- Image grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+            {% for image in images %}
+            <div class="border-3 border-border bg-white rounded shadow-brutal hover:-translate-y-1 hover:shadow-brutal-lg transition-all">
+                <!-- Image placeholder -->
+                <div class="h-40 bg-slate-100 flex items-center justify-center border-b-3 border-border">
+                    <span class="text-6xl text-slate-400">📷</span>
+                </div>
+
+                <!-- Image info -->
+                <div class="p-3">
+                    <small class="text-xs text-slate-500 block mb-2">
+                        {{ image.uploaded_at|date:"d/m/Y H:i" }}
+                    </small>
+
+                    <!-- Status badge -->
+                    {% if image.status == 'pending' %}
+                        <span class="inline-block px-2 py-1 bg-yellow-500 text-white text-xs font-bold rounded">⏳ Pendiente</span>
+                    {% elif image.status == 'processing' %}
+                        <span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded">⚙️ Procesando...</span>
+                    {% elif image.status == 'processed' %}
+                        <span class="inline-block px-2 py-1 bg-green-500 text-white text-xs font-bold rounded">✓ Procesada</span>
+                    {% elif image.status == 'failed' %}
+                        <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">✗ Error</span>
+                    {% endif %}
+                </div>
+
+                <!-- Delete button for pending images -->
+                {% if image.status == 'pending' %}
+                <div class="p-3 pt-0">
+                    <form method="post" action="{% url 'expenses:image_delete' image.id %}" class="inline-block w-full">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="w-full px-3 py-2 bg-red-100 text-red-700 border-2 border-red-300 rounded font-bold cursor-pointer transition-all hover:bg-red-200 hover:border-red-400 min-h-[44px]"
+                                onclick="return confirm('¿Eliminar esta imagen?')">
+                            🗑️ Eliminar
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex flex-col gap-3">
+            {% if pending_count > 0 %}
+            <form method="post" action="{% url 'expenses:image_process' session_id %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="w-full bg-green-600 text-white px-4 py-3 border-0 rounded font-extrabold cursor-pointer text-base transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">
+                    🤖 Procesar {{ pending_count }} Imagen(es) con IA
+                </button>
+            </form>
+            {% endif %}
+
+            <a href="{% url 'expenses:image_upload' %}"
+               class="block w-full text-center px-4 py-3 border-3 border-accent bg-white text-accent rounded font-bold cursor-pointer transition-all hover:bg-accent hover:text-white min-h-[44px] no-underline">
+                ➕ Agregar Más Imágenes
+            </a>
+
+            <a href="{% url 'profile' %}"
+               class="block w-full text-center px-4 py-3 border-3 border-border bg-white text-muted rounded font-bold cursor-pointer transition-all hover:bg-slate-100 hover:border-slate-400 min-h-[44px] no-underline">
+                Cancelar
+            </a>
+        </div>
+    </section>
+</div>
+
+{% endblock %}

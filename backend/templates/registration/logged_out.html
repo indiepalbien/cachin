@@ -1,0 +1,23 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sesión cerrada — App-Finanzas</title>
+    <link rel="stylesheet" href="{% static 'expenses/style.css' %}">
+  </head>
+  <body>
+    <header>
+      <nav class="nav">
+        <a class="brand" href="/">App-Finanzas</a>
+      </nav>
+    </header>
+
+    <main class="container login-container">
+      <h1>Sesión cerrada</h1>
+      <p>Has cerrado sesión correctamente.</p>
+      <p class="auth-link"><a href="{% url 'login' %}">Ingresar nuevamente</a></p>
+    </main>
+  </body>
+</html>

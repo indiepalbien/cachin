@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Mis Subidas de Imágenes{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <section class="mb-6">
+        <div class="flex flex-wrap justify-between items-center gap-4">
+            <h1 class="text-2xl md:text-3xl font-extrabold text-muted">
+                🖼️ Mis Subidas de Imágenes
+            </h1>
+            <a href="{% url 'expenses:image_upload' %}"
+               class="inline-block px-4 py-3 bg-accent text-white border-0 rounded font-bold cursor-pointer transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px] no-underline">
+                ➕ Nueva Subida
+            </a>
+        </div>
+    </section>
+
+    <!-- Session list -->
+    {% if sessions %}
+    <section class="p-4 md:p-6 border-3 border-accent bg-panel rounded shadow-brutal mb-4">
+        <h5 class="font-extrabold text-lg text-muted mb-4">
+            Sesiones Recientes (últimos 30 días)
+        </h5>
+
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-slate-100 border-b-3 border-border">
+                        <th class="text-left p-3 font-extrabold text-muted">Fecha</th>
+                        <th class="text-left p-3 font-extrabold text-muted">Imágenes</th>
+                        <th class="text-left p-3 font-extrabold text-muted">Estado</th>
+                        <th class="text-left p-3 font-extrabold text-muted">Detalle</th>
+                        <th class="text-left p-3 font-extrabold text-muted">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in sessions %}
+                    <tr class="border-b-2 border-slate-200 hover:bg-slate-50 transition-colors">
+                        <td class="p-3">
+                            <small class="text-sm text-slate-600">
+                                {{ session.first_upload|date:"d/m/Y H:i" }}
+                            </small>
+                        </td>
+                        <td class="p-3">
+                            <span class="inline-block px-2 py-1 bg-slate-300 text-slate-800 text-xs font-bold rounded">
+                                {{ session.image_count }} imagen{{ session.image_count|pluralize:"es" }}
+                            </span>
+                        </td>
+                        <td class="p-3">
+                            <span class="inline-block px-2 py-1 bg-{{ session.status_class }}-500 text-white text-xs font-bold rounded">
+                                {{ session.status_display }}
+                            </span>
+                        </td>
+                        <td class="p-3">
+                            <div class="flex flex-wrap gap-2 text-sm">
+                                {% if session.processed_count > 0 %}
+                                <span class="text-green-600 font-semibold">
+                                    ✓ {{ session.processed_count }}
+                                </span>
+                                {% endif %}
+                                {% if session.processing_count > 0 %}
+                                <span class="text-blue-600 font-semibold">
+                                    ⚙️ {{ session.processing_count }}
+                                </span>
+                                {% endif %}
+                                {% if session.failed_count > 0 %}
+                                <span class="text-red-600 font-semibold">
+                                    ✗ {{ session.failed_count }}
+                                </span>
+                                {% endif %}
+                                {% if session.pending_count > 0 %}
+                                <span class="text-yellow-600 font-semibold">
+                                    ⏳ {{ session.pending_count }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="p-3">
+                            <div class="flex gap-2">
+                                <a href="{% url 'expenses:image_results' session.session_id %}"
+                                   class="inline-block px-3 py-2 border-2 border-accent text-accent rounded font-bold cursor-pointer transition-all hover:bg-accent hover:text-white min-h-[40px] no-underline">
+                                    👁️ Ver
+                                </a>
+
+                                {% if session.status != 'completed' %}
+                                <form method="post"
+                                      action="{% url 'expenses:image_reject' session.session_id %}"
+                                      class="inline-block"
+                                      onsubmit="return confirm('¿Descartar esta sesión de subida?');">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="px-3 py-2 bg-red-100 text-red-700 border-2 border-red-300 rounded font-bold cursor-pointer transition-all hover:bg-red-200 hover:border-red-400 min-h-[40px]"
+                                            title="Descartar sesión">
+                                        🗑️
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Card View -->
+        <div class="md:hidden space-y-3">
+            {% for session in sessions %}
+            <div class="p-4 border-3 border-border bg-white rounded shadow-brutal">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <small class="text-xs text-slate-600 block">
+                            {{ session.first_upload|date:"d/m/Y H:i" }}
+                        </small>
+                        <span class="inline-block px-2 py-1 bg-slate-300 text-slate-800 text-xs font-bold rounded mt-1">
+                            {{ session.image_count }} imagen{{ session.image_count|pluralize:"es" }}
+                        </span>
+                    </div>
+                    <span class="inline-block px-2 py-1 bg-{{ session.status_class }}-500 text-white text-xs font-bold rounded">
+                        {{ session.status_display }}
+                    </span>
+                </div>
+
+                <div class="flex flex-wrap gap-2 text-sm mb-3">
+                    {% if session.processed_count > 0 %}
+                    <span class="text-green-600 font-semibold">✓ {{ session.processed_count }}</span>
+                    {% endif %}
+                    {% if session.processing_count > 0 %}
+                    <span class="text-blue-600 font-semibold">⚙️ {{ session.processing_count }}</span>
+                    {% endif %}
+                    {% if session.failed_count > 0 %}
+                    <span class="text-red-600 font-semibold">✗ {{ session.failed_count }}</span>
+                    {% endif %}
+                    {% if session.pending_count > 0 %}
+                    <span class="text-yellow-600 font-semibold">⏳ {{ session.pending_count }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="flex gap-2">
+                    <a href="{% url 'expenses:image_results' session.session_id %}"
+                       class="flex-1 text-center px-3 py-2 border-2 border-accent text-accent rounded font-bold cursor-pointer transition-all hover:bg-accent hover:text-white min-h-[44px] no-underline flex items-center justify-center">
+                        👁️ Ver
+                    </a>
+
+                    {% if session.status != 'completed' %}
+                    <form method="post"
+                          action="{% url 'expenses:image_reject' session.session_id %}"
+                          onsubmit="return confirm('¿Descartar esta sesión de subida?');">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="px-3 py-2 bg-red-100 text-red-700 border-2 border-red-300 rounded font-bold cursor-pointer transition-all hover:bg-red-200 hover:border-red-400 min-h-[44px]">
+                            🗑️
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Legend -->
+        <div class="mt-4 p-3 bg-slate-50 border-2 border-slate-200 rounded">
+            <span class="text-sm font-bold text-slate-700 mr-2">Leyenda:</span>
+            <span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded mx-1">Pendiente</span>
+            <span class="inline-block px-2 py-1 bg-yellow-500 text-white text-xs font-bold rounded mx-1">En proceso</span>
+            <span class="inline-block px-2 py-1 bg-green-500 text-white text-xs font-bold rounded mx-1">Completado</span>
+            <span class="inline-block px-2 py-1 bg-red-500 text-white text-xs font-bold rounded mx-1">Fallido</span>
+        </div>
+    </section>
+
+    {% else %}
+    <!-- Empty state -->
+    <section class="p-6 md:p-10 border-3 border-border bg-panel rounded shadow-brutal text-center">
+        <div class="text-8xl mb-4">📷</div>
+        <h4 class="text-xl font-extrabold text-muted mb-2">No hay subidas recientes</h4>
+        <p class="text-slate-600 mb-4">
+            Sube imágenes de recibos o facturas para extraer transacciones automáticamente.
+        </p>
+        <a href="{% url 'expenses:image_upload' %}"
+           class="inline-block px-6 py-3 bg-accent text-white border-0 rounded font-extrabold cursor-pointer transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px] no-underline">
+            ☁️ Subir Imágenes
+        </a>
+    </section>
+    {% endif %}
+
+    <!-- Back button -->
+    <div class="mt-6">
+        <a href="{% url 'profile' %}"
+           class="inline-block px-4 py-3 border-3 border-border bg-white text-muted rounded font-bold cursor-pointer transition-all hover:bg-slate-100 hover:border-slate-400 min-h-[44px] no-underline">
+            ← Volver al Perfil
+        </a>
+    </div>
+</div>
+{% endblock %}

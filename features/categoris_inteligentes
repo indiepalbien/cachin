@@ -1,0 +1,39 @@
+
+
+Queremos usar un sistema de reglas para mejorar la aplicación. Cuando un usuario categoriza una transferencia y le asigna una categoriza
+o un beneficario queremos aprender eso y usarlo luego.
+
+Para esto, vamos a mirar los campos (descripcion, moneda, y monto) y crear una regla para cada combinación.
+
+La idea es que a medida que una regla se va usando debería ir mejorarndo la probabilidad de clasificación
+
+
+Vamos a tener que santizar un poco los datos
+
+EJEMPLOS 
+
+Sole y Gian f*HANDY* -> Sole y Gian es probablemente la parte importante entonces estaría bueno crear un feature con (sole, gian handy)
+582.00
+UYU
+
+en este caso, queremos matchear por (sole, gian) y no por handy porque handy es un generico que no tiene información
+
+PAYPAL *NAMECHEAP -> similar acá creariamos (paypal, namecheap) y querriamos matchear sobretodo con namecheap, porque paypal es generico
+10.18
+USD
+
+para decidir si algo es generico, deberíamos poder calcular un count sobre en cuantas reglas está o similar
+y luego cuadno matchamos una regla, deberíamos tener un umbral para asociarla.
+
+cuando classificamos algo deberíamos crear 4 reglas al menos:
+
+(sole, gian, handy)
+(sole, gian, handy, 582)
+(sole, gian, handy, 582, uyu)
+(sole, gian, handy, uyu) 
+
+y usar la que matchee más, eventualemnte iremos borrando reglas que no se usan.
+
+
+1. Cuando un usuario categoriza una transacción, se crea una nueva regla
+2. Cuando se crea una nueva regla, se intenta aplicar automáticamente a todas las transacciones

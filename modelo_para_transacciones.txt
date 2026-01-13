@@ -1,0 +1,44 @@
+
+Transaction
+- id
+- date 
+- amount
+- currency (USD/EUR/GDP/UYU/etc)
+- source_id (link a sources)
+- cat_id (links to categories)
+- proj_id (link to projects)
+- commnets (texto)
+- payee_id (link to payee)
+- external_id (id en splitwise, etc)
+
+def to_usd() # returns the transaction amount to usd using most recent conversion value
+
+categories
+- id
+- name 
+
+projects 
+- id
+- name
+
+payees
+- id
+- name
+
+sources
+- id
+- name
+
+exchanges
+- id
+- date
+- source_currency (eg USD)
+- target_currency (eg UYU)
+- amount (target_currency / source_currency)
+
+balances
+- source_id
+- start_date
+- end_date
+- currency
+- amount

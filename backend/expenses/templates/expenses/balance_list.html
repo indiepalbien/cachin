@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Balances{% endblock %}
+
+{% block content %}
+  <p><a href="{% url 'expenses:manage_dashboard' %}" class="text-accent font-bold hover:underline">← Volver</a></p>
+  <h1 class="text-2xl md:text-3xl font-extrabold mb-4">Balances</h1>
+  <p class="text-gray-600 mb-4">Gestiona los balances iniciales de tus fuentes de pago (cuentas bancarias, tarjetas, etc.)</p>
+
+  <div class="mb-4 flex gap-3 flex-wrap">
+    <a href="{% url 'expenses:manage_balance_add' %}?next={{ request.get_full_path|urlencode }}"
+       class="bg-accent text-white px-4 py-2 rounded font-bold shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px] inline-block no-underline transition-all">
+      + Añadir Balance
+    </a>
+    <a href="{% url 'expenses:manage_balance_bulk_add' %}?next={{ request.get_full_path|urlencode }}"
+       class="bg-blue-600 text-white px-4 py-2 rounded font-bold shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px] inline-block no-underline transition-all">
+      + Añadir por Monedas
+    </a>
+  </div>
+
+  {% if balances_by_source %}
+    <div class="space-y-4">
+      {% for source_name, balances in balances_by_source.items %}
+        <section class="p-4 border-3 border-accent bg-white rounded shadow-brutal">
+          <h2 class="text-xl font-extrabold mb-3 text-accent">{{ source_name }}</h2>
+
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr class="border-b-2 border-border">
+                  <th class="text-left p-2 font-bold">Fecha Inicio</th>
+                  <th class="text-left p-2 font-bold">Fecha Fin</th>
+                  <th class="text-center p-2 font-bold">Moneda</th>
+                  <th class="text-right p-2 font-bold">Monto</th>
+                  <th class="text-center p-2 font-bold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for balance in balances %}
+                  <tr class="border-b border-dashed border-border hover:bg-gray-50">
+                    <td class="p-2">{{ balance.start_date|date:"d/m/Y" }}</td>
+                    <td class="p-2">{% if balance.end_date %}{{ balance.end_date|date:"d/m/Y" }}{% else %}<span class="text-gray-400">--</span>{% endif %}</td>
+                    <td class="text-center p-2 font-mono">{{ balance.currency }}</td>
+                    <td class="text-right p-2 font-bold">{{ balance.amount }}</td>
+                    <td class="text-center p-2">
+                      <div class="flex gap-2 justify-center">
+                        <a href="{% url 'expenses:manage_balance_edit' balance.pk %}?next={{ request.get_full_path|urlencode }}"
+                           class="text-accent font-bold hover:underline text-sm">Editar</a>
+                        <span class="text-gray-300">·</span>
+                        <a href="{% url 'expenses:manage_balance_delete' balance.pk %}?next={{ request.get_full_path|urlencode }}"
+                           class="text-red-600 font-bold hover:underline text-sm">Borrar</a>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="p-6 border-3 border-border bg-gray-50 rounded shadow-brutal text-center">
+      <p class="text-gray-600 text-lg mb-3">No hay balances registrados.</p>
+      <p class="text-sm text-gray-500">Los balances te permiten registrar el saldo inicial de tus cuentas y ver el balance actual considerando tus transacciones.</p>
+    </div>
+  {% endif %}
+{% endblock %}

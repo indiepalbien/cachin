@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Resultados del Procesamiento{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'expenses:my_uploads' %}" class="text-accent font-bold hover:underline">← Volver a Mis Subidas</a></p>
+<h1 class="text-2xl md:text-3xl font-extrabold mb-4">Resultados del Procesamiento</h1>
+
+<!-- Status card -->
+<section class="my-4 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal">
+  <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold">Estado del Procesamiento</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+    <div>
+      <div class="text-3xl font-extrabold mb-1">{{ processed_count }}</div>
+      <small class="text-green-600 font-semibold">Procesadas</small>
+    </div>
+    <div>
+      <div class="text-3xl font-extrabold mb-1">{{ processing_count }}</div>
+      <small class="text-blue-600 font-semibold">Procesando</small>
+    </div>
+    <div>
+      <div class="text-3xl font-extrabold mb-1">{{ pending_count }}</div>
+      <small class="text-yellow-600 font-semibold">Pendientes</small>
+    </div>
+    <div>
+      <div class="text-3xl font-extrabold mb-1">{{ failed_count }}</div>
+      <small class="text-red-600 font-semibold">Errores</small>
+    </div>
+  </div>
+
+  {% if has_failed %}
+  <div class="mt-4 pt-3 border-t border-slate-200">
+    <form method="post" action="{% url 'expenses:image_retry' session_id %}" class="inline">
+      {% csrf_token %}
+      <button type="submit" class="bg-yellow-500 text-white px-4 py-2 border-0 rounded font-bold cursor-pointer transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">
+        🔄 Reintentar Procesamiento
+      </button>
+    </form>
+    <small class="text-slate-600 ml-2">
+      Se reintentarán las imágenes que fallaron.
+    </small>
+  </div>
+  {% endif %}
+
+  {% if not is_complete %}
+  <div class="mt-4 p-3 bg-blue-100 border-2 border-blue-300 rounded">
+    ⏳ El procesamiento está en curso. Esta página se actualizará automáticamente.
+  </div>
+  {% endif %}
+</section>
+
+<!-- Transactions found -->
+{% if transactions %}
+<section class="my-4 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal">
+  <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold">Transacciones Encontradas ({{ transactions|length }})</h2>
+  <p class="text-slate-600 mb-4">
+    Selecciona las transacciones que deseas agregar. Verifica que la información sea correcta.
+  </p>
+
+  <form method="post" action="{% url 'expenses:image_confirm_transactions' session_id %}">
+    {% csrf_token %}
+
+    <!-- Source and bulk currency selection -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 pb-4 border-b-2 border-slate-200">
+      <div>
+        <label for="source_name" class="block font-bold mb-2 text-base">Fuente de las transacciones *</label>
+        <input type="text"
+               name="source_name"
+               id="source_name"
+               list="sourcesList"
+               placeholder="Ej: Tarjeta VISA, Cuenta Corriente..."
+               required
+               class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+        <datalist id="sourcesList">
+          {% for source in sources %}
+          <option value="{{ source.name }}">
+          {% endfor %}
+        </datalist>
+        <small class="block mt-1 text-sm text-slate-600">Selecciona una fuente existente o escribe una nueva</small>
+      </div>
+
+      <div>
+        <label for="bulk_currency" class="block font-bold mb-2 text-base">Aplicar moneda a todas (opcional)</label>
+        <select id="bulk_currency" class="w-full px-3 py-3 border-3 border-border bg-white text-base rounded-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+          <option value="">-- Mantener individual --</option>
+          <option value="USD">USD - Dólar</option>
+          <option value="UYU">UYU - Peso Uruguayo</option>
+          <option value="EUR">EUR - Euro</option>
+          <option value="PEN">PEN - Sol Peruano</option>
+          <option value="ARS">ARS - Peso Argentino</option>
+          <option value="BRL">BRL - Real Brasileño</option>
+        </select>
+        <small class="block mt-1 text-sm text-slate-600">Cambia todas las monedas de una vez</small>
+      </div>
+    </div>
+
+    <!-- Select all checkbox -->
+    <div class="mb-3 flex items-center gap-2">
+      <input type="checkbox" id="selectAll" class="w-5 h-5 border-2 border-border cursor-pointer">
+      <label for="selectAll" class="font-semibold cursor-pointer">Seleccionar todas</label>
+    </div>
+
+    <!-- Transaction cards (similar to transaction list) -->
+    <div class="flex flex-col gap-3 mb-4">
+      {% for tx in transactions %}
+        {% if tx.is_exact_duplicate %}
+          {% comment %}Exact duplicate: orange background{% endcomment %}
+          <div class="relative p-4 border-3 border-orange-400 bg-orange-50 rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg"
+               data-index="{{ forloop.counter0 }}"
+               data-date="{{ tx.date }}"
+               data-description="{{ tx.description }}"
+               data-amount="{{ tx.amount }}"
+               data-currency="{{ tx.currency }}">
+            <!-- Duplicate badge -->
+            <div class="absolute top-2 right-2 px-2 py-1 bg-orange-500 text-white text-xs font-bold rounded">
+              ⚠️ Duplicado Exacto
+            </div>
+        {% elif tx.has_missing_date %}
+          {% comment %}Missing date: red background{% endcomment %}
+          <div class="relative p-4 border-3 border-red-400 bg-red-50 rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg"
+               data-index="{{ forloop.counter0 }}"
+               data-date="{{ tx.date }}"
+               data-description="{{ tx.description }}"
+               data-amount="{{ tx.amount }}"
+               data-currency="{{ tx.currency }}">
+            <!-- Missing date badge -->
+            <div class="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
+              ⚠️ Fecha Faltante
+            </div>
+        {% elif tx.is_partial_duplicate %}
+          {% comment %}Partial duplicate: yellow background{% endcomment %}
+          <div class="relative p-4 border-3 border-yellow-400 bg-yellow-50 rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg"
+               data-index="{{ forloop.counter0 }}"
+               data-date="{{ tx.date }}"
+               data-description="{{ tx.description }}"
+               data-amount="{{ tx.amount }}"
+               data-currency="{{ tx.currency }}">
+            <!-- Duplicate badge -->
+            <div class="absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs font-bold rounded">
+              ⚠️ Posible Duplicado
+            </div>
+        {% else %}
+          {% comment %}Not a duplicate: white background{% endcomment %}
+          <div class="relative p-4 border-3 border-border bg-white rounded-md shadow-brutal transition-all hover:-translate-y-1 hover:shadow-brutal-lg"
+               data-index="{{ forloop.counter0 }}"
+               data-date="{{ tx.date }}"
+               data-description="{{ tx.description }}"
+               data-amount="{{ tx.amount }}"
+               data-currency="{{ tx.currency }}">
+        {% endif %}
+
+          <!-- Header: Checkbox, Date, Description, Amount -->
+          <div class="flex flex-wrap md:flex-nowrap items-start gap-3 mb-3 pb-3 border-b-2 border-slate-100">
+            <!-- Checkbox -->
+            <div class="shrink-0 flex items-center">
+              <input type="checkbox"
+                     name="selected_transactions"
+                     value="{{ forloop.counter0 }}"
+                     class="transaction-checkbox w-5 h-5 border-2 border-border cursor-pointer"
+                     {% if not tx.is_exact_duplicate and not tx.has_missing_date %}checked{% endif %}>
+            </div>
+
+            <!-- Date -->
+            <div class="text-sm font-semibold text-slate-500 shrink-0 w-full md:w-auto order-1">
+              {% if tx.date %}
+                {{ tx.date }}
+              {% else %}
+                <span class="text-red-600 font-bold">⚠️ Fecha requerida</span>
+              {% endif %}
+            </div>
+
+            <!-- Amount on mobile, right side on desktop -->
+            <div class="font-extrabold text-lg whitespace-nowrap text-muted px-3 py-1 bg-slate-100 rounded shrink-0 ml-auto md:ml-0 order-2 md:order-3">
+              <span id="amount-{{ forloop.counter0 }}">{{ tx.amount }}</span>
+            </div>
+
+            <!-- Description - full width on mobile, flex-1 on desktop -->
+            <div class="w-full md:flex-1 font-semibold text-base text-muted leading-snug break-words order-3 md:order-2">
+              {{ tx.description }}
+            </div>
+          </div>
+
+          <!-- Controls: 3 columns on desktop, 1 on mobile -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">💰 Moneda</label>
+              <select name="currency_{{ forloop.counter0 }}"
+                      class="currency-select w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all cursor-pointer hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]"
+                      data-index="{{ forloop.counter0 }}">
+                <option value="USD" {% if tx.currency == 'USD' %}selected{% endif %}>USD - Dólar</option>
+                <option value="UYU" {% if tx.currency == 'UYU' %}selected{% endif %}>UYU - Peso Uruguayo</option>
+                <option value="EUR" {% if tx.currency == 'EUR' %}selected{% endif %}>EUR - Euro</option>
+                <option value="PEN" {% if tx.currency == 'PEN' %}selected{% endif %}>PEN - Sol Peruano</option>
+                <option value="ARS" {% if tx.currency == 'ARS' %}selected{% endif %}>ARS - Peso Argentino</option>
+                <option value="BRL" {% if tx.currency == 'BRL' %}selected{% endif %}>BRL - Real Brasileño</option>
+              </select>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">📁 Categoría</label>
+              <input type="text"
+                     name="category_{{ forloop.counter0 }}"
+                     list="categoriesList"
+                     placeholder="Categoría..."
+                     class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">👤 Beneficiario</label>
+              <input type="text"
+                     name="payee_{{ forloop.counter0 }}"
+                     list="payeesList"
+                     placeholder="Beneficiario..."
+                     class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+            </div>
+          </div>
+
+          <!-- Notes and Flip Sign row -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">📝 Notas</label>
+              <input type="text"
+                     name="notes_{{ forloop.counter0 }}"
+                     placeholder="Notas adicionales..."
+                     class="w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]">
+            </div>
+
+            <div class="flex flex-col gap-1 justify-end">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">🔄 Cambiar Signo</label>
+              <label class="flex items-center gap-3 px-3 py-2 border-2 border-slate-300 rounded bg-slate-50 hover:bg-slate-100 cursor-pointer min-h-[44px] transition-colors">
+                <input type="checkbox"
+                       name="flip_{{ forloop.counter0 }}"
+                       class="flip-sign-checkbox w-5 h-5 border-2 border-border cursor-pointer"
+                       data-index="{{ forloop.counter0 }}"
+                       data-original-amount="{{ tx.amount }}">
+                <span class="text-sm font-semibold">Invertir signo del monto</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Submit button -->
+    <div class="flex flex-col gap-3 mt-4">
+      <button type="submit" class="w-full bg-accent text-white px-4 py-3 border-0 rounded font-extrabold cursor-pointer text-base transition-all shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg min-h-[44px]">
+        ✓ Confirmar y Agregar Transacciones Seleccionadas
+      </button>
+
+      <!-- Reject session button -->
+      <button type="button"
+              onclick="if(confirm('¿Estás seguro de que deseas descartar todas las imágenes y transacciones extraídas? Esta acción no se puede deshacer.')) { document.getElementById('rejectForm').submit(); }"
+              class="w-full bg-slate-200 text-slate-700 px-4 py-3 border-2 border-slate-300 rounded font-bold cursor-pointer transition-all hover:bg-red-100 hover:text-red-700 hover:border-red-300 min-h-[44px]">
+        🗑️ Descartar Todo
+      </button>
+    </div>
+  </form>
+
+  <!-- Hidden reject form -->
+  <form method="post" action="{% url 'expenses:image_reject' session_id %}" id="rejectForm" class="hidden">
+    {% csrf_token %}
+  </form>
+
+  <p class="text-center text-slate-500 text-sm mt-3">Esta acción eliminará todas las imágenes y datos de esta sesión.</p>
+</section>
+
+<!-- Datalists for autocomplete -->
+<datalist id="categoriesList">
+  {% for category in user_categories %}
+  <option value="{{ category }}">
+  {% endfor %}
+</datalist>
+
+<datalist id="payeesList">
+  {% for payee in user_payees %}
+  <option value="{{ payee }}">
+  {% endfor %}
+</datalist>
+
+{% elif is_complete %}
+<div class="p-4 bg-yellow-100 border-2 border-yellow-300 rounded">
+  ⚠️ No se encontraron transacciones en las imágenes procesadas.
+</div>
+{% endif %}
+
+<!-- Failed images -->
+{% if failed_count > 0 %}
+<section class="my-4 p-3 md:p-4 border-3 border-red-500 bg-panel rounded shadow-brutal">
+  <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold text-red-600">Imágenes con Errores</h2>
+  {% for image in images %}
+    {% if image.status == 'failed' %}
+    <div class="p-3 mb-2 bg-red-100 border-2 border-red-300 rounded">
+      <strong class="block mb-1">{{ image.original_filename }}</strong>
+      <span class="text-sm text-red-700">{{ image.processing_error }}</span>
+    </div>
+    {% endif %}
+  {% endfor %}
+</section>
+{% endif %}
+
+<script>
+// Auto-refresh if processing is not complete
+{% if not is_complete %}
+setTimeout(function() {
+    location.reload();
+}, 5000);  // Refresh every 5 seconds
+{% endif %}
+
+// Store all existing transactions for duplicate checking
+const existingTransactions = {{ transactions|safe|default:"[]" }};
+
+// Function to check for duplicates via AJAX
+async function checkDuplicate(date, description, amount, currency) {
+    try {
+        const response = await fetch('{% url "expenses:api_check_duplicate" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                date: date,
+                description: description,
+                amount: amount,
+                currency: currency
+            })
+        });
+        const data = await response.json();
+        return {
+            exact: data.is_exact_duplicate || false,
+            partial: data.is_partial_duplicate || false
+        };
+    } catch (error) {
+        console.error('Error checking duplicate:', error);
+        return { exact: false, partial: false };
+    }
+}
+
+// Function to update card styling based on duplicate status
+function updateCardDuplicateStatus(card, isExact, isPartial) {
+    const badge = card.querySelector('.absolute.top-2.right-2');
+
+    // Remove existing duplicate classes
+    card.classList.remove('bg-orange-50', 'border-orange-400', 'bg-yellow-50', 'border-yellow-400', 'bg-white', 'border-border');
+
+    if (isExact) {
+        card.classList.add('bg-orange-50', 'border-orange-400');
+        if (badge) {
+            badge.className = 'absolute top-2 right-2 px-2 py-1 bg-orange-500 text-white text-xs font-bold rounded';
+            badge.textContent = '⚠️ Duplicado Exacto';
+        } else {
+            card.insertAdjacentHTML('afterbegin', '<div class="absolute top-2 right-2 px-2 py-1 bg-orange-500 text-white text-xs font-bold rounded">⚠️ Duplicado Exacto</div>');
+        }
+        // Uncheck exact duplicates by default
+        const checkbox = card.querySelector('.transaction-checkbox');
+        if (checkbox) checkbox.checked = false;
+    } else if (isPartial) {
+        card.classList.add('bg-yellow-50', 'border-yellow-400');
+        if (badge) {
+            badge.className = 'absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs font-bold rounded';
+            badge.textContent = '⚠️ Posible Duplicado';
+        } else {
+            card.insertAdjacentHTML('afterbegin', '<div class="absolute top-2 right-2 px-2 py-1 bg-yellow-600 text-white text-xs font-bold rounded">⚠️ Posible Duplicado</div>');
+        }
+    } else {
+        card.classList.add('bg-white', 'border-border');
+        if (badge) {
+            badge.remove();
+        }
+    }
+}
+
+// Bulk currency change
+document.getElementById('bulk_currency')?.addEventListener('change', function(e) {
+    const newCurrency = e.target.value;
+    if (!newCurrency) return;
+
+    const currencySelects = document.querySelectorAll('.currency-select');
+    currencySelects.forEach(select => {
+        select.value = newCurrency;
+        // Trigger change event to update duplicate detection
+        select.dispatchEvent(new Event('change'));
+    });
+});
+
+// Individual currency change with duplicate detection
+document.querySelectorAll('.currency-select').forEach(select => {
+    select.addEventListener('change', async function() {
+        const index = this.dataset.index;
+        const card = this.closest('[data-index]');
+        const date = card.dataset.date;
+        const description = card.dataset.description;
+        const amount = parseFloat(card.dataset.amount);
+        const newCurrency = this.value;
+
+        // Update data attribute
+        card.dataset.currency = newCurrency;
+
+        // Check for duplicates with new currency
+        const duplicateStatus = await checkDuplicate(date, description, amount, newCurrency);
+        updateCardDuplicateStatus(card, duplicateStatus.exact, duplicateStatus.partial);
+    });
+});
+
+// Select all checkbox
+document.getElementById('selectAll')?.addEventListener('change', function(e) {
+    const checkboxes = document.querySelectorAll('.transaction-checkbox');
+    checkboxes.forEach(cb => cb.checked = e.target.checked);
+});
+
+// Flip sign functionality
+document.querySelectorAll('.flip-sign-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const index = this.dataset.index;
+        const amountElement = document.getElementById('amount-' + index);
+        const originalAmount = parseFloat(this.dataset.originalAmount);
+
+        if (this.checked) {
+            amountElement.textContent = (-originalAmount).toFixed(2);
+        } else {
+            amountElement.textContent = originalAmount.toFixed(2);
+        }
+    });
+});
+</script>
+
+{% endblock %}

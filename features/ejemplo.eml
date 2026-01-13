@@ -1,0 +1,86 @@
+Return-Path: <test@example.com>
+Delivered-To: admin@example.com
+Authentication-Results: example.com; auth=pass
+DKIM-Signature: a=rsa-sha256; b=FAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATURE==; s=example1; d=example.com; v=1; bh=FAKEHASH=; h=Received:From:Date:Subject:To;
+DKIM-Signature: a=rsa-sha256; b=FAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATUREFAKESIGNATURE==; s=example1; d=example.com; v=1; bh=FAKEHASH=; h=Received:From:Date:Subject:To;
+X-Pm-Original-To: admin@example.com
+Received: by smtp.example.com (Example SMTP) with ESMTPSA id -123456789
+          for <admin@example.com>
+          (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384);
+          Mon, 15 Dec 2025 11:29:19 +0000 (UTC)
+Content-Type: multipart/alternative; boundary=Apple-Mail-1AF8713B-9119-4777-918A-48664DE39172
+Content-Transfer-Encoding: 7bit
+From: Test User <test@example.com>
+Mime-Version: 1.0 (1.0)
+Date: Mon, 15 Dec 2025 08:28:48 -0300
+Subject: Fwd: Alerta de Compras Visa
+Message-Id: <C839F782-995E-4D1A-BBC6-5C532200D15F@example.com>
+References: <96b900$d0fnop@cportal1.visa.com>
+To: admin@example.com
+X-Mailer: iPhone Mail (23B85)
+
+
+--Apple-Mail-1AF8713B-9119-4777-918A-48664DE39172
+Content-Type: text/html;
+	charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<html class=3D"apple-mail-supports-explicit-dark-mode"><head><meta http-equi=
+v=3D"content-type" content=3D"text/html; charset=3Dutf-8"></head><body dir=3D=
+"auto"><div dir=3D"ltr"></div><div dir=3D"ltr"><br><br><br>Begin forwarded m=
+essage:<br><br></div><blockquote type=3D"cite"><div dir=3D"ltr"><b>From:</b>=
+ Alerta de Compras Visa &lt;DoNotReplyAlertadeComprasVisa@visa.com&gt;<br><b=
+>Date:</b> 13 December 2025 at 2:17:46=E2=80=AFPM GMT-3<br><b>To:</b> diego@=
+kiedanski.com<br><b>Subject:</b> <b>Alerta de Compras Visa</b><br><br></div>=
+</blockquote><blockquote type=3D"cite"><div dir=3D"ltr">=EF=BB=BF
+
+   =20
+   =20
+   =20
+   =20
+
+
+
+
+
+   =20
+    <img src=3D"https://imgctl.visa.com/ImageCatalog/KxlHiN01RUuWCixS3f15bw"=
+ alt=3D"" data-unique-identifier=3D"">
+
+    <hr>
+
+        <p>Su tarjeta Visa con terminaci=C3=B3n 1234 se acaba de usar en el e=
+xterior para la siguiente transacci=C3=B3n:<br><br>
+Comercio: PAYPAL *VENDOR<br>
+Pa=C3=ADs: USA<br>
+Ciudad:  Not Available<br>
+Tarjeta: 1234<br>
+Autorizaci=C3=B3n: 123456<br>
+Referencia: False<br>
+Tipo de transacci=C3=B3n: Compra<br>
+Moneda: USD<br>
+Monto: 15.99<br><br>
+Si no reconoce esta transacci=C3=B3n, por favor llame de inmediato al n=C3=BA=
+mero de servicio al cliente que figura al dorso de su tarjeta Visa. <br>=20
+<br>
+Para darse de baja de este tipo de alertas, inicie sesi=C3=B3n en su cuenta y=
+ actualice sus suscripciones a alertas.</p>
+   =20
+    <p>Alerta de Compras Visa</p>
+
+    <hr>
+    <p> =C2=BFDemasiado contenido en tu bandeja de entrada? <a href=3D"https=
+://purchasealerts.visa.com/vca-web/unsubscribe?lang=3Des-419&amp;communityCo=
+de=3DPA&amp;ExternalCustomerId=3De56dec50-4f44-4ab0-ee73-1dafb72f9a01&amp;Ha=
+shedCustomerId=3DByBCNt52ELyScsYx31ACleZD4+3N2ZCBimAZpMDFEcA=3D&amp;EmailAdd=
+ress=3Dtest@example.com"> Anular la suscripci=C3=B3n a las alertas por co=
+rreo electr=C3=B3nico </a> </p>
+    <p> Este correo electr=C3=B3nico se envi=C3=B3 desde una direcci=C3=B3n q=
+ue no puede aceptar mensajes entrantes. Si cree que recibi=C3=B3 este correo=
+ electr=C3=B3nico por error, ign=C3=B3relo o comun=C3=ADquese con nosotros a=
+l VPAAsistencia@visa.com. </p>
+
+
+</div></blockquote></body></html>=
+
+--Apple-Mail-1AF8713B-9119-4777-918A-48664DE39172--

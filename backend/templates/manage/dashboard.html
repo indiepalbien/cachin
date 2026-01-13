@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestionar Datos{% endblock %}
+
+{% block content %}
+  <p><a href="{% url 'profile' %}" class="text-accent font-bold hover:underline">← Volver</a></p>
+  <h1 class="text-2xl md:text-3xl font-extrabold mb-4">Gestionar Datos</h1>
+
+  <!-- Preferences Section -->
+  <section class="my-4 p-4 border-3 border-accent bg-panel rounded shadow-brutal">
+    <h2 class="text-xl font-extrabold mt-0 mb-3">Preferencias</h2>
+    <form hx-post="{% url 'expenses:update_user_preference' %}"
+          hx-target="#pref-msg"
+          hx-swap="innerHTML"
+          hx-trigger="change">
+      {% csrf_token %}
+      <input type="hidden" name="key" value="convert_expenses_to_usd">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" name="value" value="true"
+               class="w-5 h-5 cursor-pointer"
+               {% if user.preferences.convert_expenses_to_usd %}checked{% endif %}>
+        <span class="font-medium">Convertir gastos a USD en resumen</span>
+      </label>
+      <div id="pref-msg" class="mt-2 min-h-[1.5rem] text-sm text-green-600"></div>
+    </form>
+  </section>
+
+  <!-- Resources Section -->
+  <h2 class="text-xl font-extrabold mb-3">Recursos</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+    {% for name, url_name in resources %}
+      <a href="{% url url_name %}"
+         class="block p-4 border-3 border-border bg-white rounded shadow-brutal hover:-translate-y-1 hover:shadow-brutal-lg transition-all no-underline group">
+        <span class="font-bold text-lg text-gray-800 group-hover:text-accent transition-colors">{{ name }}</span>
+      </a>
+    {% endfor %}
+  </div>
+{% endblock %}

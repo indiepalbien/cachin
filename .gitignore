@@ -1,0 +1,35 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+
+# Media files (local development uploads)
+backend/media/
+media/
+
+# SQLite database files (development only)
+backend/db.sqlite3
+*.sqlite3
+
+# Node.js
+node_modules/
+package-lock.json
+
+# Generated CSS (built by Tailwind) - commented out so it's committed for production
+# backend/expenses/static/expenses/output.css
+
+# Alignet test data (contains sensitive information)
+backend/expenses/email_parsers/test_data/*.eml
+*alignet*test*.eml
+"Fwd Código de seguridad compra en linea.eml"
+
+# Transaction images (user uploaded content)
+backend/transaction_images/*
+!backend/transaction_images/.gitkeep
