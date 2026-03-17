@@ -1,0 +1,55 @@
+<div id="budget-expenses-section">
+  <div style="text-align:center;margin:.25rem 0 .5rem 0">
+    <a href="#"
+       hx-get="{% url 'expenses:api_budget_expenses' %}?m={{ m_prev }}"
+       hx-target="#budget-expenses-section"
+       hx-swap="outerHTML">« Mes anterior</a>
+    <span style="margin:0 .75rem">Presupuestos {{ selected_month_str }}</span>
+    {% if selected_month_str != m_current %}
+      <a href="#"
+         hx-get="{% url 'expenses:api_budget_expenses' %}"
+         hx-target="#budget-expenses-section"
+         hx-swap="outerHTML">Mes actual »</a>
+    {% endif %}
+  </div>
+
+  {% if budget_rows %}
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr>
+          <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Presupuesto</th>
+          <th style="text-align:center;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda</th>
+          <th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">Límite</th>
+          <th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">Gastado</th>
+          <th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">Restante</th>
+          <th style="border-bottom:2px solid var(--border);padding:.25rem 0;min-width:80px">Progreso</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in budget_rows %}
+          <tr>
+            <td style="padding:.4rem 0;border-bottom:1px dashed var(--border)">{{ row.name }}</td>
+            <td style="padding:.4rem 0;text-align:center;border-bottom:1px dashed var(--border)">{{ row.currency }}</td>
+            <td style="padding:.4rem 0;text-align:right;border-bottom:1px dashed var(--border)">{{ row.limit }}</td>
+            <td style="padding:.4rem 0;text-align:right;border-bottom:1px dashed var(--border)">{{ row.spent }}</td>
+            <td style="padding:.4rem 0;text-align:right;border-bottom:1px dashed var(--border);
+                       font-weight:700;
+                       color:{% if row.color == 'red' %}#e53935{% elif row.color == 'orange' %}#f57c00{% else %}#2e7d32{% endif %}">
+              {{ row.remaining }}
+            </td>
+            <td style="padding:.4rem 0;border-bottom:1px dashed var(--border)">
+              <div style="background:#e0e0e0;border-radius:4px;height:10px;width:100%;overflow:hidden">
+                <div style="background:{% if row.color == 'red' %}#e53935{% elif row.color == 'orange' %}#f57c00{% else %}#43a047{% endif %};
+                            width:{{ row.pct_clamped }}%;height:10px;border-radius:4px;transition:width .3s">
+                </div>
+              </div>
+              <div style="font-size:0.75rem;text-align:right;color:#999;margin-top:2px">{{ row.pct }}%</div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="padding:.3rem 0;color:#999">Sin presupuestos activos para este mes.</p>
+  {% endif %}
+</div>

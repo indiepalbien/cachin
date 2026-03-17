@@ -67,6 +67,35 @@ class Source(models.Model):
         return self.name
 
 
+class BudgetGroup(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200)
+    currency = models.CharField(max_length=3)
+
+    class Meta:
+        verbose_name = "grupo de presupuesto"
+        verbose_name_plural = "grupos de presupuesto"
+
+    def __str__(self):
+        return f"{self.name} ({self.currency})"
+
+
+class Budget(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    group = models.ForeignKey(BudgetGroup, on_delete=models.CASCADE, related_name='versions')
+    effective_date = models.DateField()
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    categories = models.ManyToManyField('Category', blank=True)
+
+    class Meta:
+        ordering = ['-effective_date']
+        verbose_name = "presupuesto"
+        verbose_name_plural = "presupuestos"
+
+    def __str__(self):
+        return f"{self.group.name}: {self.amount} {self.group.currency} desde {self.effective_date}"
+
+
 class DefaultExchangeRate(models.Model):
     """Default exchange rates fetched from openexchangerates.org, updated weekly."""
     currency = models.CharField(max_length=3, unique=True, db_index=True)

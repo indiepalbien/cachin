@@ -39,6 +39,14 @@ urlpatterns = [
     path("manage/balances/<int:pk>/edit/", views.BalanceUpdateView.as_view(), name="manage_balance_edit"),
     path("manage/balances/<int:pk>/delete/", views.BalanceDeleteView.as_view(), name="manage_balance_delete"),
 
+    path("manage/budgetgroups/", views.BudgetGroupListView.as_view(), name="manage_budgetgroups"),
+    path("manage/budgetgroups/add/", views.BudgetGroupCreateView.as_view(), name="manage_budgetgroup_add"),
+    path("manage/budgetgroups/<int:pk>/edit/", views.BudgetGroupUpdateView.as_view(), name="manage_budgetgroup_edit"),
+    path("manage/budgetgroups/<int:pk>/delete/", views.BudgetGroupDeleteView.as_view(), name="manage_budgetgroup_delete"),
+    path("manage/budgets/add/", views.BudgetCreateView.as_view(), name="manage_budget_add"),
+    path("manage/budgets/<int:pk>/edit/", views.BudgetUpdateView.as_view(), name="manage_budget_edit"),
+    path("manage/budgets/<int:pk>/delete/", views.BudgetDeleteView.as_view(), name="manage_budget_delete"),
+
     path("manage/transactions/", views.TransactionListView.as_view(), name="manage_transactions"),
     path("manage/transactions/add/", views.TransactionCreateView.as_view(), name="manage_transaction_add"),
     path("manage/transactions/<int:pk>/edit/", views.TransactionUpdateView.as_view(), name="manage_transaction_edit"),
@@ -68,6 +76,7 @@ urlpatterns = [
     path("api/category-expenses/", views.api_category_expenses, name="api_category_expenses"),
     path("api/project-expenses/", views.api_project_expenses, name="api_project_expenses"),
     path("api/source-expenses/", views.api_source_expenses, name="api_source_expenses"),
+    path("api/budget-expenses/", views.api_budget_expenses, name="api_budget_expenses"),
     path("api/update-preference/", views.update_user_preference, name="update_user_preference"),
     
     # Image upload routes for transaction extraction

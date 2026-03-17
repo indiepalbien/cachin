@@ -15,7 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from urllib.parse import quote_plus
-from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate, UserProfile, UserPreferences
+from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate, UserProfile, UserPreferences, BudgetGroup, Budget
 from . import forms
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.core.validators import validate_email
@@ -253,6 +253,7 @@ def manage_dashboard(request):
         ("Splitwise", "expenses:splitwise_status"),
         ("Emails", "expenses:manage_emails"),
         ("Pendientes", "expenses:manage_pending_transactions"),
+        ("Presupuestos", "expenses:manage_budgetgroups"),
     ]
     return render(request, "manage/dashboard.html", {"resources": resources})
 
@@ -383,6 +384,8 @@ class OwnerListView(LoginRequiredMixin, ListView):
             "exchange": "exchanges",
             "balance": "balances",
             "transaction": "transactions",
+            "budgetgroup": "budgetgroups",
+            "budget": "budgetgroups",
         }
         plural = plural_map.get(model_name, model_name + "s")
         ctx["create_url_name"] = f"expenses:manage_{model_name}_add"
@@ -427,6 +430,8 @@ class OwnerCreateView(LoginRequiredMixin, CreateView):
             "exchange": "exchanges",
             "balance": "balances",
             "transaction": "transactions",
+            "budgetgroup": "budgetgroups",
+            "budget": "budgetgroups",
         }
         plural = plural_map.get(model_name, model_name + "s")
         ctx["list_url"] = reverse(f"expenses:manage_{plural}")
@@ -461,6 +466,8 @@ class OwnerUpdateView(LoginRequiredMixin, OwnerRequiredMixin, UpdateView):
             "exchange": "exchanges",
             "balance": "balances",
             "transaction": "transactions",
+            "budgetgroup": "budgetgroups",
+            "budget": "budgetgroups",
         }
         plural = plural_map.get(model_name, model_name + "s")
         ctx["list_url"] = reverse(f"expenses:manage_{plural}")
@@ -486,6 +493,8 @@ class OwnerDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
             "exchange": "exchanges",
             "balance": "balances",
             "transaction": "transactions",
+            "budgetgroup": "budgetgroups",
+            "budget": "budgetgroups",
         }
         plural = plural_map.get(model_name, model_name + "s")
         list_url = reverse(f"expenses:manage_{plural}")
@@ -757,6 +766,80 @@ class BalanceDeleteView(OwnerDeleteView):
     model = Balance
     template_name = "manage/confirm_delete.html"
     success_url = reverse_lazy("expenses:manage_balances")
+
+
+class BudgetGroupListView(OwnerListView):
+    model = BudgetGroup
+    template_name = "expenses/budget_group_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        groups = ctx['object_list'].prefetch_related('versions').order_by('name')
+        ctx['groups'] = groups
+        return ctx
+
+
+class BudgetGroupCreateView(OwnerCreateView):
+    model = BudgetGroup
+    form_class = forms.BudgetGroupForm
+    template_name = "manage/form.html"
+    success_url = reverse_lazy("expenses:manage_budgetgroups")
+
+
+class BudgetGroupUpdateView(OwnerUpdateView):
+    model = BudgetGroup
+    form_class = forms.BudgetGroupForm
+    template_name = "manage/form.html"
+    success_url = reverse_lazy("expenses:manage_budgetgroups")
+
+
+class BudgetGroupDeleteView(OwnerDeleteView):
+    model = BudgetGroup
+    template_name = "manage/confirm_delete.html"
+    success_url = reverse_lazy("expenses:manage_budgetgroups")
+
+
+class BudgetCreateView(OwnerCreateView):
+    model = Budget
+    form_class = forms.BudgetForm
+    template_name = "manage/form.html"
+    success_url = reverse_lazy("expenses:manage_budgetgroups")
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        form.fields['categories'].queryset = Category.objects.filter(
+            user=self.request.user
+        ).order_by('name')
+        form.fields['group'].queryset = BudgetGroup.objects.filter(
+            user=self.request.user
+        )
+        group_id = self.request.GET.get('group')
+        if group_id:
+            form.initial['group'] = group_id
+        return form
+
+
+class BudgetUpdateView(OwnerUpdateView):
+    model = Budget
+    form_class = forms.BudgetForm
+    template_name = "manage/form.html"
+    success_url = reverse_lazy("expenses:manage_budgetgroups")
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        form.fields['categories'].queryset = Category.objects.filter(
+            user=self.request.user
+        ).order_by('name')
+        form.fields['group'].queryset = BudgetGroup.objects.filter(
+            user=self.request.user
+        )
+        return form
+
+
+class BudgetDeleteView(OwnerDeleteView):
+    model = Budget
+    template_name = "manage/confirm_delete.html"
+    success_url = reverse_lazy("expenses:manage_budgetgroups")
 
 
 @login_required
@@ -2007,6 +2090,100 @@ def api_source_expenses(request):
         return render(request, 'expenses/partials/source_expenses.html', context)
 
     # Legacy JSON response
+    return JsonResponse(context)
+
+
+@login_required
+@require_GET
+def api_budget_expenses(request):
+    """API endpoint: Return budget progress for a month (HTMX HTML or JSON)."""
+    user = request.user
+
+    def month_str(y, m):
+        return f"{y:04d}-{m:02d}"
+
+    def prev_month(y, m):
+        return (y - 1, 12) if m == 1 else (y, m - 1)
+
+    def next_month(y, m):
+        return (y + 1, 1) if m == 12 else (y, m + 1)
+
+    today = datetime.date.today()
+    current_year, current_month = today.year, today.month
+    m_param = request.GET.get('m', '')
+    sel_year, sel_month = current_year, current_month
+    if m_param:
+        try:
+            parts = m_param.split('-')
+            y, m = int(parts[0]), int(parts[1])
+            if 1 <= m <= 12:
+                sel_year, sel_month = y, m
+        except Exception:
+            pass
+
+    first_day = datetime.date(sel_year, sel_month, 1)
+    ny, nm = next_month(sel_year, sel_month)
+    last_day = datetime.date(ny, nm, 1) - datetime.timedelta(days=1)
+    next_first = datetime.date(ny, nm, 1)
+
+    groups = BudgetGroup.objects.filter(user=user).prefetch_related('versions')
+    budget_rows = []
+
+    for group in groups:
+        effective = (
+            group.versions
+            .filter(effective_date__lte=last_day)
+            .prefetch_related('categories')
+            .first()
+        )
+        if effective is None:
+            continue
+
+        category_ids = list(effective.categories.values_list('id', flat=True))
+
+        spent = Transaction.objects.filter(
+            user=user,
+            date__gte=first_day,
+            date__lt=next_first,
+            currency=group.currency,
+            category_id__in=category_ids,
+        ).exclude(amount=0).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0')
+
+        limit = effective.amount
+        remaining = limit - spent
+        pct = float(spent / limit * 100) if limit else 0
+        pct_clamped = min(pct, 100)
+
+        if pct >= 100:
+            color = 'red'
+        elif pct >= 75:
+            color = 'orange'
+        else:
+            color = 'green'
+
+        budget_rows.append({
+            'name': group.name,
+            'currency': group.currency,
+            'limit': str(limit.quantize(Decimal('0.01'))),
+            'spent': str(spent.quantize(Decimal('0.01'))),
+            'remaining': str(remaining.quantize(Decimal('0.01'))),
+            'pct': round(pct, 1),
+            'pct_clamped': round(pct_clamped, 1),
+            'color': color,
+        })
+
+    py, pm = prev_month(sel_year, sel_month)
+    context = {
+        'budget_rows': budget_rows,
+        'selected_month_str': month_str(sel_year, sel_month),
+        'm_current': month_str(current_year, current_month),
+        'm_prev': month_str(py, pm),
+    }
+
+    if request.htmx:
+        return render(request, 'expenses/partials/budget_expenses.html', context)
     return JsonResponse(context)
 
 

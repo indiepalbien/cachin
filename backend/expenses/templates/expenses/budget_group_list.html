@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Presupuestos{% endblock %}
+{% block content %}
+<p><a href="{% url 'expenses:manage_dashboard' %}" class="text-accent font-bold hover:underline">← Volver</a></p>
+<h1 class="text-2xl md:text-3xl font-extrabold mb-4">Presupuestos</h1>
+
+<div class="mb-4">
+  <a href="{% url 'expenses:manage_budgetgroup_add' %}" class="bg-accent text-white px-4 py-2 rounded font-bold no-underline">
+    + Nuevo presupuesto
+  </a>
+</div>
+
+{% if groups %}
+  {% for group in groups %}
+    <section class="my-4 p-3 border-3 border-accent bg-panel rounded shadow-brutal">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-extrabold m-0">{{ group.name }} <span class="text-muted font-normal text-sm">{{ group.currency }}</span></h2>
+        <div class="flex gap-2">
+          <a href="{% url 'expenses:manage_budget_add' %}?group={{ group.pk }}&next={{ request.get_full_path|urlencode }}"
+             class="text-sm text-accent font-bold no-underline hover:underline">+ Versión</a>
+          <a href="{% url 'expenses:manage_budgetgroup_edit' group.pk %}?next={{ request.get_full_path|urlencode }}"
+             class="text-sm text-muted no-underline hover:underline">Editar</a>
+          <a href="{% url 'expenses:manage_budgetgroup_delete' group.pk %}?next={{ request.get_full_path|urlencode }}"
+             class="text-sm text-red-500 no-underline hover:underline">Borrar</a>
+        </div>
+      </div>
+
+      {% if group.versions.all %}
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr>
+              <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Desde</th>
+              <th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">Límite</th>
+              <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0;font-size:0.85rem">Categorías</th>
+              <th style="border-bottom:2px solid var(--border)"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for version in group.versions.all %}
+              <tr>
+                <td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">{{ version.effective_date|date:"d/m/Y" }}</td>
+                <td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">{{ version.amount }}</td>
+                <td style="padding:.3rem 0;border-bottom:1px dashed var(--border);font-size:0.85rem;color:#666">
+                  {% for cat in version.categories.all %}{{ cat.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}
+                </td>
+                <td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border);white-space:nowrap">
+                  <a href="{% url 'expenses:manage_budget_edit' version.pk %}?next={{ request.get_full_path|urlencode }}"
+                     class="text-sm text-accent no-underline hover:underline mr-2">Editar</a>
+                  <a href="{% url 'expenses:manage_budget_delete' version.pk %}?next={{ request.get_full_path|urlencode }}"
+                     class="text-sm text-red-500 no-underline hover:underline">Borrar</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="text-muted text-sm m-0">Sin versiones. <a href="{% url 'expenses:manage_budget_add' %}?group={{ group.pk }}">+ Añadir</a></p>
+      {% endif %}
+    </section>
+  {% endfor %}
+{% else %}
+  <div class="my-4 p-4 border-2 border-dashed border-border rounded text-muted text-center">
+    No hay presupuestos configurados.
+    <a href="{% url 'expenses:manage_budgetgroup_add' %}" class="text-accent font-bold">Crear el primero</a>
+  </div>
+{% endif %}
+{% endblock %}

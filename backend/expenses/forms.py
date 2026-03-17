@@ -1,7 +1,7 @@
 """Forms for expenses app."""
 
 from django import forms
-from .models import Exchange, Transaction, Category, Project, Payee, Source, Balance
+from .models import Exchange, Transaction, Category, Project, Payee, Source, Balance, BudgetGroup, Budget
 
 
 class ExchangeForm(forms.ModelForm):
@@ -140,6 +140,43 @@ class BalanceCurrencyForm(forms.ModelForm):
                 'placeholder': '1000.00'
             }),
         }
+
+
+class BudgetGroupForm(forms.ModelForm):
+    class Meta:
+        model = BudgetGroup
+        fields = ['name', 'currency']
+        widgets = {
+            'currency': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'USD',
+                'maxlength': '3',
+            }),
+        }
+
+
+class BudgetForm(forms.ModelForm):
+    class Meta:
+        model = Budget
+        fields = ['group', 'effective_date', 'amount', 'categories']
+        widgets = {
+            'effective_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
+            }),
+            'amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': '300.00',
+            }),
+            'categories': forms.CheckboxSelectMultiple(),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['group'].queryset = BudgetGroup.objects.filter(user=user)
+            self.fields['categories'].queryset = Category.objects.filter(user=user).order_by('name')
 
 
 class TransactionForm(forms.ModelForm):
