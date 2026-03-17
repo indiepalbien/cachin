@@ -2157,10 +2157,14 @@ def api_budget_expenses(request):
 
         if pct >= 100:
             color = 'red'
-        elif pct >= 75:
+        elif pct >= 90:
             color = 'orange'
-        else:
+        elif pct >= 75:
+            color = 'yellow'
+        elif pct >= 50:
             color = 'green'
+        else:
+            color = 'blue'
 
         budget_rows.append({
             'name': group.name,

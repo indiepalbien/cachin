@@ -34,12 +34,12 @@
             <td style="padding:.4rem .5rem;text-align:right;border-bottom:1px dashed var(--border)">{{ row.spent }}</td>
             <td style="padding:.4rem .5rem;text-align:right;border-bottom:1px dashed var(--border);
                        font-weight:700;
-                       color:{% if row.color == 'red' %}#e53935{% elif row.color == 'orange' %}#f57c00{% else %}#2e7d32{% endif %}">
+                       color:{% if row.color == 'red' %}#e53935{% elif row.color == 'orange' %}#f57c00{% elif row.color == 'yellow' %}#f9a825{% elif row.color == 'green' %}#2e7d32{% else %}#1565c0{% endif %}">
               {{ row.remaining }}
             </td>
             <td style="padding:.4rem 0 .4rem .5rem;border-bottom:1px dashed var(--border)">
               <div style="background:#e0e0e0;border-radius:4px;height:10px;width:100%;overflow:hidden">
-                <div style="background:{% if row.color == 'red' %}#e53935{% elif row.color == 'orange' %}#f57c00{% else %}#43a047{% endif %};
+                <div style="background:{% if row.color == 'red' %}#e53935{% elif row.color == 'orange' %}#f57c00{% elif row.color == 'yellow' %}#f9a825{% elif row.color == 'green' %}#43a047{% else %}#1e88e5{% endif %};
                             width:{{ row.pct_clamped }}%;height:10px;border-radius:4px;transition:width .3s">
                 </div>
               </div>
