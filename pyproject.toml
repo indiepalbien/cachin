@@ -24,4 +24,6 @@ dependencies = [
     "pydantic>=2.0.0",
     "pillow>=11.0.0",
     "llama-cloud-services>=0.6.88",
+    "django-storages>=1.14.6",
+    "boto3>=1.42.69",
 ]

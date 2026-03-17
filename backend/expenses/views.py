@@ -610,14 +610,14 @@ class SourceListView(OwnerListView):
 
 class SourceCreateView(OwnerCreateView):
     model = Source
-    fields = ["name"]
+    fields = ["name", "is_credit_card"]
     template_name = "manage/form.html"
     success_url = reverse_lazy("expenses:manage_sources")
 
 
 class SourceUpdateView(OwnerUpdateView):
     model = Source
-    fields = ["name"]
+    fields = ["name", "is_credit_card"]
     template_name = "manage/form.html"
     success_url = reverse_lazy("expenses:manage_sources")
 
@@ -1893,7 +1893,7 @@ def api_source_expenses(request):
     # Get transactions from earliest balance start to end of selected month
     next_first = datetime.date(ny, nm, 1)
 
-    # Include all non-zero transactions (both positive and negative)
+    # Include all non-zero transactions
     month_qs = Transaction.objects.filter(
         user=user,
         date__gte=earliest_start,
@@ -1905,7 +1905,7 @@ def api_source_expenses(request):
         # Convert to USD and group by source+currency (keep balances in native currency)
         source_currency_totals = {}
         missing_rates_count = 0
-        transactions = month_qs.select_related('source')
+        transactions = month_qs.select_related('source', 'category')
 
         for tx in transactions:
             src_name = tx.source.name
@@ -1916,6 +1916,11 @@ def api_source_expenses(request):
             balance_start = balance_start_map.get(key)
             if balance_start and tx.date < balance_start:
                 continue  # Transaction is before balance period starts
+
+            # For credit card sources, exclude payment transactions (counts_to_total=False)
+            # Bank accounts include all transactions since the money actually left.
+            if tx.source.is_credit_card and tx.category and not tx.category.counts_to_total:
+                continue
 
             amount_usd = tx.to_usd()
 
@@ -1947,7 +1952,7 @@ def api_source_expenses(request):
     else:
         # Group by source AND currency (keep sign: positive = expense, negative = income)
         source_currency_totals = {}
-        transactions = month_qs.select_related('source')
+        transactions = month_qs.select_related('source', 'category')
 
         for tx in transactions:
             src_name = tx.source.name
@@ -1958,6 +1963,10 @@ def api_source_expenses(request):
             balance_start = balance_start_map.get(key)
             if balance_start and tx.date < balance_start:
                 continue  # Transaction is before balance period starts
+
+            # For credit card sources, exclude payment transactions (counts_to_total=False)
+            if tx.source.is_credit_card and tx.category and not tx.category.counts_to_total:
+                continue
 
             if key not in source_currency_totals:
                 source_currency_totals[key] = Decimal('0')
