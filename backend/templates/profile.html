@@ -35,6 +35,18 @@
   </div>
   {% endif %}
 
+  <!-- Presupuestos -->
+  <section class="my-4 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal">
+    <h2 class="mt-0 text-lg md:text-xl font-extrabold">Presupuestos</h2>
+    <div id="budget-expenses-section"
+         hx-get="{% url 'expenses:api_budget_expenses' %}"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="outerHTML">
+      <p class="text-muted text-sm">Cargando...</p>
+    </div>
+  </section>
+
   <!-- Gastos por categoría con carga independiente -->
   <section id="category-expenses" class="my-4 p-3 md:p-4 border border-accent bg-panel rounded">
     <h2 class="mt-0 mb-3 text-lg md:text-xl font-extrabold">Gastos por categoría</h2>
@@ -183,16 +195,5 @@
     </div>
   </section>
 
-  <!-- Presupuestos -->
-  <section class="my-4 p-3 md:p-4 border-3 border-accent bg-panel rounded shadow-brutal">
-    <h2 class="mt-0 text-lg md:text-xl font-extrabold">Presupuestos</h2>
-    <div id="budget-expenses-section"
-         hx-get="{% url 'expenses:api_budget_expenses' %}"
-         hx-trigger="load"
-         hx-target="this"
-         hx-swap="outerHTML">
-      <p class="text-muted text-sm">Cargando...</p>
-    </div>
-  </section>
 
 {% endblock %}

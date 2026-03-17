@@ -2145,10 +2145,9 @@ def api_budget_expenses(request):
             user=user,
             date__gte=first_day,
             date__lt=next_first,
-            currency=group.currency,
             category_id__in=category_ids,
         ).exclude(amount=0).aggregate(
-            total=Sum('amount')
+            total=Sum('amount_usd')
         )['total'] or Decimal('0')
 
         limit = effective.amount

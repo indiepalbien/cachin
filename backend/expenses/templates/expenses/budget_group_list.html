@@ -29,18 +29,18 @@
         <table style="width:100%;border-collapse:collapse">
           <thead>
             <tr>
-              <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Desde</th>
-              <th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem 0">Límite</th>
-              <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0;font-size:0.85rem">Categorías</th>
+              <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem .5rem .25rem 0">Desde</th>
+              <th style="text-align:right;border-bottom:2px solid var(--border);padding:.25rem .5rem">Límite</th>
+              <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem .5rem;font-size:0.85rem">Categorías</th>
               <th style="border-bottom:2px solid var(--border)"></th>
             </tr>
           </thead>
           <tbody>
             {% for version in group.versions.all %}
               <tr>
-                <td style="padding:.3rem 0;border-bottom:1px dashed var(--border)">{{ version.effective_date|date:"d/m/Y" }}</td>
-                <td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border)">{{ version.amount }}</td>
-                <td style="padding:.3rem 0;border-bottom:1px dashed var(--border);font-size:0.85rem;color:#666">
+                <td style="padding:.3rem .5rem .3rem 0;border-bottom:1px dashed var(--border)">{{ version.effective_date|date:"d/m/Y" }}</td>
+                <td style="padding:.3rem .5rem;text-align:right;border-bottom:1px dashed var(--border)">{{ version.amount }}</td>
+                <td style="padding:.3rem .5rem;border-bottom:1px dashed var(--border);font-size:0.85rem;color:#666">
                   {% for cat in version.categories.all %}{{ cat.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}
                 </td>
                 <td style="padding:.3rem 0;text-align:right;border-bottom:1px dashed var(--border);white-space:nowrap">
