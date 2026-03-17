@@ -47,6 +47,11 @@ urlpatterns = [
     path("manage/budgets/<int:pk>/edit/", views.BudgetUpdateView.as_view(), name="manage_budget_edit"),
     path("manage/budgets/<int:pk>/delete/", views.BudgetDeleteView.as_view(), name="manage_budget_delete"),
 
+    path("manage/source-bank-mappings/", views.SourceBankMappingListView.as_view(), name="manage_source_bank_mappings"),
+    path("manage/source-bank-mappings/add/", views.SourceBankMappingCreateView.as_view(), name="manage_source_bank_mapping_add"),
+    path("manage/source-bank-mappings/<int:pk>/edit/", views.SourceBankMappingUpdateView.as_view(), name="manage_source_bank_mapping_edit"),
+    path("manage/source-bank-mappings/<int:pk>/delete/", views.SourceBankMappingDeleteView.as_view(), name="manage_source_bank_mapping_delete"),
+
     path("manage/transactions/", views.TransactionListView.as_view(), name="manage_transactions"),
     path("manage/transactions/add/", views.TransactionCreateView.as_view(), name="manage_transaction_add"),
     path("manage/transactions/<int:pk>/edit/", views.TransactionUpdateView.as_view(), name="manage_transaction_edit"),

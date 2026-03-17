@@ -134,12 +134,30 @@
 // Store parsed transactions
 let parsedTransactions = [];
 
+// Source mappings from Django context: { "bank_code": { "currency": "source_name" } }
+const sourceMappings = {{ source_mappings_json|safe }};
+
 // Bank currency requirements (banks that require explicit currency selection)
 const banksRequiringCurrency = {
     'itau_debito': true,
 };
 
-// Update currency visibility when bank changes
+function applyMappingDefaults() {
+    const bank = document.getElementById('bank').value;
+    const currency = document.getElementById('currency').value;
+    const sourceInput = document.getElementById('source');
+
+    if (!bank) return;
+
+    const bankMappings = sourceMappings[bank] || {};
+    const mappedSource = bankMappings[currency] || bankMappings[''] || null;
+
+    if (mappedSource) {
+        sourceInput.value = mappedSource;
+    }
+}
+
+// Update currency visibility and auto-fill source when bank changes
 document.getElementById('bank').addEventListener('change', function() {
     const requiresCurrency = banksRequiringCurrency[this.value] || false;
     const currencyContainer = document.getElementById('currencyContainer');
@@ -150,6 +168,12 @@ document.getElementById('bank').addEventListener('change', function() {
         currencyContainer.classList.add('hidden');
         document.getElementById('currency').value = '';
     }
+
+    applyMappingDefaults();
+});
+
+document.getElementById('currency').addEventListener('change', function() {
+    applyMappingDefaults();
 });
 
 function processData() {

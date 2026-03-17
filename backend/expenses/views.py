@@ -15,7 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from urllib.parse import quote_plus
-from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate, UserProfile, UserPreferences, BudgetGroup, Budget
+from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate, UserProfile, UserPreferences, BudgetGroup, Budget, SourceBankMapping
 from . import forms
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.core.validators import validate_email
@@ -27,6 +27,7 @@ import datetime
 import requests
 from requests_oauthlib import OAuth1Session
 from django.core.paginator import Paginator
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -254,6 +255,7 @@ def manage_dashboard(request):
         ("Emails", "expenses:manage_emails"),
         ("Pendientes", "expenses:manage_pending_transactions"),
         ("Presupuestos", "expenses:manage_budgetgroups"),
+        ("Mapeos banco→fuente", "expenses:manage_source_bank_mappings"),
     ]
     return render(request, "manage/dashboard.html", {"resources": resources})
 
@@ -386,6 +388,7 @@ class OwnerListView(LoginRequiredMixin, ListView):
             "transaction": "transactions",
             "budgetgroup": "budgetgroups",
             "budget": "budgetgroups",
+            "sourcebankmapping": "source_bank_mappings",
         }
         plural = plural_map.get(model_name, model_name + "s")
         ctx["create_url_name"] = f"expenses:manage_{model_name}_add"
@@ -432,6 +435,7 @@ class OwnerCreateView(LoginRequiredMixin, CreateView):
             "transaction": "transactions",
             "budgetgroup": "budgetgroups",
             "budget": "budgetgroups",
+            "sourcebankmapping": "source_bank_mappings",
         }
         plural = plural_map.get(model_name, model_name + "s")
         ctx["list_url"] = reverse(f"expenses:manage_{plural}")
@@ -468,6 +472,7 @@ class OwnerUpdateView(LoginRequiredMixin, OwnerRequiredMixin, UpdateView):
             "transaction": "transactions",
             "budgetgroup": "budgetgroups",
             "budget": "budgetgroups",
+            "sourcebankmapping": "source_bank_mappings",
         }
         plural = plural_map.get(model_name, model_name + "s")
         ctx["list_url"] = reverse(f"expenses:manage_{plural}")
@@ -495,6 +500,7 @@ class OwnerDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
             "transaction": "transactions",
             "budgetgroup": "budgetgroups",
             "budget": "budgetgroups",
+            "sourcebankmapping": "source_bank_mappings",
         }
         plural = plural_map.get(model_name, model_name + "s")
         list_url = reverse(f"expenses:manage_{plural}")
@@ -840,6 +846,57 @@ class BudgetDeleteView(OwnerDeleteView):
     model = Budget
     template_name = "manage/confirm_delete.html"
     success_url = reverse_lazy("expenses:manage_budgetgroups")
+
+
+# SourceBankMapping views
+class SourceBankMappingListView(OwnerListView):
+    model = SourceBankMapping
+    template_name = "expenses/source_bank_mapping_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['mappings'] = ctx['object_list'].select_related('source').order_by('bank_code', 'currency')
+        return ctx
+
+
+class SourceBankMappingCreateView(OwnerCreateView):
+    model = SourceBankMapping
+    form_class = forms.SourceBankMappingForm
+    template_name = "manage/form.html"
+    success_url = reverse_lazy("expenses:manage_source_bank_mappings")
+
+    def get_form_kwargs(self):
+        from .copy_paste.utils import get_available_banks
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        try:
+            kwargs['banks'] = get_available_banks()
+        except Exception:
+            kwargs['banks'] = {}
+        return kwargs
+
+
+class SourceBankMappingUpdateView(OwnerUpdateView):
+    model = SourceBankMapping
+    form_class = forms.SourceBankMappingForm
+    template_name = "manage/form.html"
+    success_url = reverse_lazy("expenses:manage_source_bank_mappings")
+
+    def get_form_kwargs(self):
+        from .copy_paste.utils import get_available_banks
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        try:
+            kwargs['banks'] = get_available_banks()
+        except Exception:
+            kwargs['banks'] = {}
+        return kwargs
+
+
+class SourceBankMappingDeleteView(OwnerDeleteView):
+    model = SourceBankMapping
+    template_name = "manage/confirm_delete.html"
+    success_url = reverse_lazy("expenses:manage_source_bank_mappings")
 
 
 @login_required
@@ -1301,12 +1358,19 @@ def bulk_add_view(request):
     user_sources = Source.objects.filter(user=user).values_list("name", flat=True)
     user_categories = Category.objects.filter(user=user).values_list("name", flat=True)
     user_payees = Payee.objects.filter(user=user).values_list("name", flat=True)
-    
+
+    # Build source mapping dict: { "bank_code": { "currency": "source_name", ... } }
+    raw_mappings = SourceBankMapping.objects.filter(user=user).select_related('source')
+    source_mappings = {}
+    for m in raw_mappings:
+        source_mappings.setdefault(m.bank_code, {})[m.currency] = m.source.name
+
     context = {
         'banks': banks,
         'user_sources': list(user_sources),
         'user_categories': list(user_categories),
         'user_payees': list(user_payees),
+        'source_mappings_json': json.dumps(source_mappings),
     }
     
     return render(request, 'expenses/bulk_add.html', context)

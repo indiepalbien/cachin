@@ -1,7 +1,7 @@
 """Forms for expenses app."""
 
 from django import forms
-from .models import Exchange, Transaction, Category, Project, Payee, Source, Balance, BudgetGroup, Budget
+from .models import Exchange, Transaction, Category, Project, Payee, Source, Balance, BudgetGroup, Budget, SourceBankMapping
 
 
 class ExchangeForm(forms.ModelForm):
@@ -177,6 +177,28 @@ class BudgetForm(forms.ModelForm):
         if user:
             self.fields['group'].queryset = BudgetGroup.objects.filter(user=user)
             self.fields['categories'].queryset = Category.objects.filter(user=user).order_by('name')
+
+
+class SourceBankMappingForm(forms.ModelForm):
+    class Meta:
+        model = SourceBankMapping
+        fields = ['bank_code', 'currency', 'source']
+        widgets = {
+            'currency': forms.TextInput(attrs={
+                'placeholder': 'USD, UYU, o en blanco para cualquiera',
+                'maxlength': '3',
+            }),
+        }
+
+    def __init__(self, *args, user=None, banks=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['source'].queryset = Source.objects.filter(user=user)
+        if banks:
+            self.fields['bank_code'] = forms.ChoiceField(
+                choices=[('', '--- Selecciona banco ---')] + list(banks.items()),
+                label='Banco',
+            )
 
 
 class TransactionForm(forms.ModelForm):

@@ -67,6 +67,24 @@ class Source(models.Model):
         return self.name
 
 
+class SourceBankMapping(models.Model):
+    """Maps a bank code (+ optional currency) to a default source for bulk import."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    bank_code = models.CharField(max_length=50)   # e.g. "itau_debito"
+    currency = models.CharField(max_length=3, blank=True, default='')  # "" means any currency
+    source = models.ForeignKey(Source, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = [('user', 'bank_code', 'currency')]
+        verbose_name = "mapeo banco-fuente"
+        verbose_name_plural = "mapeos banco-fuente"
+
+    def __str__(self):
+        if self.currency:
+            return f"{self.bank_code} ({self.currency}) → {self.source.name}"
+        return f"{self.bank_code} → {self.source.name}"
+
+
 class BudgetGroup(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
