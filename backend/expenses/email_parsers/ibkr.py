@@ -24,8 +24,9 @@ def parse_ibkr_trade(raw_eml: bytes) -> Dict[str, Any]:
     subject = mp.subject or ""
 
     # Pattern to match: BOUGHT/SOLD quantity symbol @ price
-    # Supports decimals in quantity and price
-    pattern = r'(BOUGHT|SOLD)\s+(\d+\.?\d*|\.\d+)\s+([A-Z0-9]+(?:\s+[A-Z]+)*)\s+@\s+(\d+\.?\d*|\.\d+)'
+    # Supports commas as thousand separators and decimals in quantity and price
+    # Symbol supports dots (e.g., EUR.USD) and multi-word names (e.g., SUSW LSEETF)
+    pattern = r'(BOUGHT|SOLD)\s+([\d,]+\.?\d*|\.\d+)\s+([A-Z0-9]+(?:[.\s]+[A-Z0-9]+)*)\s+@\s+([\d,]+\.?\d*|\.\d+)'
 
     match = re.search(pattern, subject, re.IGNORECASE)
 
@@ -36,9 +37,9 @@ def parse_ibkr_trade(raw_eml: bytes) -> Dict[str, Any]:
     bought = (action == 'BOUGHT')
 
     try:
-        amount = Decimal(match.group(2))
+        amount = Decimal(match.group(2).replace(',', ''))
         symbol = match.group(3).strip().upper()
-        unitprice = Decimal(match.group(4))
+        unitprice = Decimal(match.group(4).replace(',', ''))
     except (InvalidOperation, ValueError):
         return None
 
