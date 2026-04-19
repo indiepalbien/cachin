@@ -309,7 +309,7 @@ function populateTable(transactions) {
                     </div>
                 </div>
 
-                <!-- Controls: Category and Payee in 2 columns -->
+                <!-- Controls: Category, Payee, and Amortization -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div class="flex flex-col gap-1">
                         <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">📁 Categoría</label>
@@ -328,6 +328,23 @@ function populateTable(transactions) {
                                list="payeesList"
                                placeholder="Beneficiario...">
                     </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">📅 Distribuir en meses</label>
+                        <input type="number"
+                               class="txn-amortize-months w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]"
+                               data-index="${index}"
+                               min="1"
+                               placeholder="Ej: 10">
+                    </div>
+
+                    <div class="flex flex-col gap-1 txn-amortize-start-container-${index} hidden">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">📆 Inicio distribución</label>
+                        <input type="date"
+                               class="txn-amortize-start w-full px-3 py-2 text-sm border-2 border-slate-300 bg-white text-muted rounded font-semibold transition-all hover:border-slate-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 min-h-[44px]"
+                               data-index="${index}"
+                               value="${txn.date || ''}">
+                    </div>
                 </div>
             </div>
         `;
@@ -337,6 +354,17 @@ function populateTable(transactions) {
 
     document.getElementById('transactionCount').innerText = transactions.length;
     document.getElementById('tableContainer').classList.remove('hidden');
+
+    // Show amortize start date field when months > 0
+    document.querySelectorAll('.txn-amortize-months').forEach(input => {
+        input.addEventListener('input', function() {
+            const idx = this.dataset.index;
+            const container = document.querySelector(`.txn-amortize-start-container-${idx}`);
+            if (container) {
+                container.classList.toggle('hidden', !this.value || parseInt(this.value) < 1);
+            }
+        });
+    });
 }
 
 function toggleSelectAll(checkbox) {
@@ -377,11 +405,20 @@ function confirmTransactions() {
         if (categoryInput && categoryInput.value.trim()) {
             txn.category = categoryInput.value.trim();
         }
-        
+
         if (payeeInput && payeeInput.value.trim()) {
             txn.payee = payeeInput.value.trim();
         }
-        
+
+        const amortizeMonthsInput = document.querySelector(`.txn-amortize-months[data-index="${i}"]`);
+        if (amortizeMonthsInput && amortizeMonthsInput.value && parseInt(amortizeMonthsInput.value) > 0) {
+            txn.amortize_months = parseInt(amortizeMonthsInput.value);
+            const amortizeStartInput = document.querySelector(`.txn-amortize-start[data-index="${i}"]`);
+            if (amortizeStartInput && amortizeStartInput.value) {
+                txn.amortize_start_date = amortizeStartInput.value;
+            }
+        }
+
         return txn;
     });
     

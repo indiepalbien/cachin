@@ -256,6 +256,14 @@ class Transaction(models.Model):
         ),
         default="confirmed",
     )
+    amortize_months = models.IntegerField(
+        null=True, blank=True,
+        help_text="Spread this transaction over N months in category totals. Leave blank for no amortization."
+    )
+    amortize_start_date = models.DateField(
+        null=True, blank=True,
+        help_text="First month of the amortization window. Defaults to the transaction's own month if left blank."
+    )
 
     def __str__(self):
         return f"{self.date} {self.amount} {self.currency}"

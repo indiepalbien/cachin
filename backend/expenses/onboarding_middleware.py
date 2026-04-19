@@ -20,6 +20,8 @@ class OnboardingMiddleware:
         '/static/',
         '/media/',
         '/expenses/api/',  # Allow HTMX API endpoints to prevent redirect loops
+        '/expenses/splitwise/connect/',  # Allow OAuth initiation
+        '/expenses/splitwise/callback/',  # Allow OAuth callback
     ]
     
     # Map onboarding steps to URLs

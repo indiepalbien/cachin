@@ -1528,6 +1528,25 @@ def bulk_confirm_view(request):
                 category = get_or_create_model(Category, category_name) if category_name else None
                 payee = get_or_create_model(Payee, payee_name) if payee_name else None
                 
+                # Parse optional amortization fields
+                amortize_months = None
+                amortize_start_date = None
+                raw_am = txn_data.get("amortize_months")
+                if raw_am:
+                    try:
+                        amortize_months = int(raw_am)
+                        if amortize_months < 1:
+                            amortize_months = None
+                    except (ValueError, TypeError):
+                        pass
+                raw_asd = txn_data.get("amortize_start_date")
+                if raw_asd and amortize_months:
+                    try:
+                        import datetime as _dt
+                        amortize_start_date = _dt.date.fromisoformat(raw_asd)
+                    except (ValueError, TypeError):
+                        pass
+
                 # Create transaction
                 transaction = Transaction.objects.create(
                     user=user,
@@ -1538,6 +1557,8 @@ def bulk_confirm_view(request):
                     source=source,
                     category=category,
                     payee=payee,
+                    amortize_months=amortize_months,
+                    amortize_start_date=amortize_start_date,
                 )
                 
                 created_count += 1
@@ -1586,6 +1607,11 @@ API_BASE = 'https://secure.splitwise.com/api/v3.0'
 
 @login_required
 def splitwise_connect(request):
+    # Preserve the 'next' parameter through the OAuth flow
+    next_url = request.GET.get('next', '')
+    if next_url:
+        request.session['splitwise_next'] = next_url
+    
     callback = request.build_absolute_uri(reverse('expenses:splitwise_callback'))
     oauth = OAuth1Session(settings.SPLITWISE_CONSUMER_KEY, client_secret=settings.SPLITWISE_CONSUMER_SECRET, callback_uri=callback)
     fetch_response = oauth.fetch_request_token(REQUEST_TOKEN_URL)
@@ -1640,7 +1666,10 @@ def splitwise_callback(request):
     account.save()
     
     messages.success(request, "✅ Cuenta de Splitwise conectada exitosamente")
-    return redirect(request.GET.get('next') or '/')
+    
+    # Get the 'next' URL from session (preserved from connect view)
+    next_url = request.session.pop('splitwise_next', None) or request.GET.get('next') or '/expenses/manage/splitwise/'
+    return redirect(next_url)
 
 
 @login_required
@@ -1702,55 +1731,108 @@ def api_recent_transactions(request):
     })
 
 
-def get_category_expenses(user, month_qs, convert_to_usd=False):
+def _amortization_covers_month(amortize_start_date, amortize_months, year, month):
+    """Return True if the amortization window [start, start+N months) covers year/month."""
+    first_day = datetime.date(year, month, 1)
+    start = amortize_start_date.replace(day=1)
+    if start > first_day:
+        return False
+    total_months = (start.year * 12 + start.month) + amortize_months
+    end_year, end_month = divmod(total_months - 1, 12)
+    end_first = datetime.date(end_year, end_month + 1, 1)
+    return first_day < end_first
+
+
+def get_category_expenses(user, month_qs, convert_to_usd=False, sel_year=None, sel_month=None):
     """
     Calculate category expenses for a given month's transactions.
 
+    Amortized transactions (amortize_months set) contribute amount/amortize_months to
+    category totals for each month in their window. Transactions from other months that
+    have an amortization window covering sel_year/sel_month are also included.
+
     Args:
         user: User instance
-        month_qs: QuerySet of Transaction objects for the month
+        month_qs: QuerySet of Transaction objects dated within the month
         convert_to_usd: If True, convert all amounts to USD using to_usd()
-                       If False, use original amounts with currency
+        sel_year: Year of the month being viewed (required for amortization support)
+        sel_month: Month number being viewed (required for amortization support)
 
     Returns:
         tuple: (cat_expenses, missing_rates, subtotals)
-            cat_expenses: list of dicts with 'category', 'currency', 'total', 'counts_to_total'
-            missing_rates: count of transactions without exchange rates (only when convert_to_usd=True)
-            subtotals: dict of currency -> subtotal (only for categories where counts_to_total=True)
     """
     # Get all user categories with counts_to_total flag
     categories_map = {cat.name: cat.counts_to_total for cat in Category.objects.filter(user=user)}
 
+    def effective_amount(tx):
+        """Return the amount this transaction contributes for the viewed month."""
+        if not tx.amortize_months:
+            return tx.amount
+        start = (tx.amortize_start_date or tx.date).replace(day=1)
+        if sel_year and sel_month and not _amortization_covers_month(start, tx.amortize_months, sel_year, sel_month):
+            return Decimal('0')
+        return (tx.amount / tx.amortize_months).quantize(Decimal('0.01'))
+
+    # Collect all transactions to process: those in the month plus amortized ones from
+    # other months whose window covers this month.
+    all_transactions = list(month_qs.select_related('category'))
+
+    if sel_year and sel_month:
+        first_day = datetime.date(sel_year, sel_month, 1)
+        ny = sel_year + (sel_month // 12)
+        nm = (sel_month % 12) + 1
+        next_first = datetime.date(ny, nm, 1)
+
+        # Transactions NOT dated in this month, but amortized and potentially covering it
+        extra_qs = (
+            Transaction.objects.filter(
+                user=user,
+                amortize_months__isnull=False,
+                amortize_start_date__isnull=False,
+                amortize_start_date__lte=first_day,
+            )
+            .exclude(date__gte=first_day, date__lt=next_first)
+            .exclude(amount=0)
+            .select_related('category')
+        )
+        for tx in extra_qs:
+            start = tx.amortize_start_date.replace(day=1)
+            if _amortization_covers_month(start, tx.amortize_months, sel_year, sel_month):
+                all_transactions.append(tx)
+
     if convert_to_usd:
-        # Convert to USD and group by category
         category_totals = {}
         missing_rates_count = 0
         subtotal_usd = Decimal('0')
 
-        # Select related to avoid N+1 queries
-        transactions = month_qs.select_related('category')
-
-        for tx in transactions:
-            cat_name = tx.category.name if tx.category else 'Sin categoría'
-            counts_to_total = categories_map.get(cat_name, True)  # Default True for 'Sin categoría'
-
-            # Use to_usd() method which handles caching
-            amount_usd = tx.to_usd()
-
-            if amount_usd is None:
-                missing_rates_count += 1
+        for tx in all_transactions:
+            amt = effective_amount(tx)
+            if amt == 0:
                 continue
 
-            # Add to category total (keep sign: positive = expense, negative = income)
+            cat_name = tx.category.name if tx.category else 'Sin categoría'
+            counts_to_total = categories_map.get(cat_name, True)
+
+            # Scale USD conversion proportionally for amortized amounts
+            if tx.amortize_months:
+                full_usd = tx.to_usd()
+                if full_usd is None:
+                    missing_rates_count += 1
+                    continue
+                amount_usd = (full_usd / tx.amortize_months).quantize(Decimal('0.01'))
+            else:
+                amount_usd = tx.to_usd()
+                if amount_usd is None:
+                    missing_rates_count += 1
+                    continue
+
             if cat_name not in category_totals:
                 category_totals[cat_name] = Decimal('0')
             category_totals[cat_name] += amount_usd
 
-            # Add to subtotal if category counts
             if counts_to_total:
                 subtotal_usd += amount_usd
 
-        # Convert to list format sorted by total descending
         cat_expenses = [
             {
                 'category': cat_name,
@@ -1765,12 +1847,14 @@ def get_category_expenses(user, month_qs, convert_to_usd=False):
         return cat_expenses, missing_rates_count, subtotals
 
     else:
-        # Group by category AND currency (keep sign: positive = expense, negative = income)
         category_currency_totals = {}
-        currency_subtotals = {}  # Track subtotal per currency
-        transactions = month_qs.select_related('category')
+        currency_subtotals = {}
 
-        for tx in transactions:
+        for tx in all_transactions:
+            amt = effective_amount(tx)
+            if amt == 0:
+                continue
+
             cat_name = tx.category.name if tx.category else 'Sin categoría'
             currency = tx.currency
             key = (cat_name, currency)
@@ -1778,15 +1862,13 @@ def get_category_expenses(user, month_qs, convert_to_usd=False):
 
             if key not in category_currency_totals:
                 category_currency_totals[key] = Decimal('0')
-            category_currency_totals[key] += tx.amount
+            category_currency_totals[key] += amt
 
-            # Add to currency subtotal if category counts
             if counts_to_total:
                 if currency not in currency_subtotals:
                     currency_subtotals[currency] = Decimal('0')
-                currency_subtotals[currency] += tx.amount
+                currency_subtotals[currency] += amt
 
-        # Sort by category name, then currency
         cat_expenses = [
             {
                 'category': cat_name,
@@ -1852,8 +1934,10 @@ def api_category_expenses(request):
         date__lt=next_first,
     ).exclude(amount=0)
 
-    # Use helper function to calculate expenses
-    cat_expenses, missing_rates, subtotals = get_category_expenses(user, month_qs, convert_to_usd)
+    # Use helper function to calculate expenses (pass sel_year/sel_month for amortization)
+    cat_expenses, missing_rates, subtotals = get_category_expenses(
+        user, month_qs, convert_to_usd, sel_year=sel_year, sel_month=sel_month
+    )
 
     py, pm = prev_month(sel_year, sel_month)
 

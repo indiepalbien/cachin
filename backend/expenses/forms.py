@@ -206,7 +206,7 @@ class TransactionForm(forms.ModelForm):
 
     class Meta:
         model = Transaction
-        fields = ["date", "description", "amount", "currency", "source", "category", "project", "payee", "comments"]
+        fields = ["date", "description", "amount", "currency", "source", "category", "project", "payee", "comments", "amortize_months", "amortize_start_date"]
         widgets = {
             'date': forms.DateInput(attrs={
                 'type': 'date',
@@ -221,6 +221,15 @@ class TransactionForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'USD',
                 'maxlength': '3'
+            }),
+            'amortize_months': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'placeholder': 'Ej: 10',
+            }),
+            'amortize_start_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
             }),
         }
 
