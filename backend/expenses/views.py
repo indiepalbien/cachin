@@ -15,7 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from urllib.parse import quote_plus
-from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate, UserProfile, UserPreferences, BudgetGroup, Budget, SourceBankMapping
+from .models import Category, Project, Payee, Source, Exchange, Balance, Transaction, UserEmailMessage, UserEmailConfig, PendingTransaction, SplitwiseAccount, DefaultExchangeRate, UserProfile, UserPreferences, BudgetGroup, Budget, SourceBankMapping, IBKRSymbolCurrency
 from . import forms
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from django.core.validators import validate_email
@@ -897,6 +897,36 @@ class SourceBankMappingDeleteView(OwnerDeleteView):
     model = SourceBankMapping
     template_name = "manage/confirm_delete.html"
     success_url = reverse_lazy("expenses:manage_source_bank_mappings")
+
+
+class IBKRSymbolCurrencyListView(OwnerListView):
+    model = IBKRSymbolCurrency
+    template_name = "expenses/ibkr_symbol_currency_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['mappings'] = ctx['object_list'].order_by('symbol')
+        return ctx
+
+
+class IBKRSymbolCurrencyCreateView(OwnerCreateView):
+    model = IBKRSymbolCurrency
+    form_class = forms.IBKRSymbolCurrencyForm
+    template_name = "manage/form.html"
+    success_url = reverse_lazy("expenses:manage_ibkr_symbol_currencies")
+
+
+class IBKRSymbolCurrencyUpdateView(OwnerUpdateView):
+    model = IBKRSymbolCurrency
+    form_class = forms.IBKRSymbolCurrencyForm
+    template_name = "manage/form.html"
+    success_url = reverse_lazy("expenses:manage_ibkr_symbol_currencies")
+
+
+class IBKRSymbolCurrencyDeleteView(OwnerDeleteView):
+    model = IBKRSymbolCurrency
+    template_name = "manage/confirm_delete.html"
+    success_url = reverse_lazy("expenses:manage_ibkr_symbol_currencies")
 
 
 @login_required

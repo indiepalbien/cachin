@@ -17,6 +17,8 @@ from expenses.email_parsers.gmail_forwarding import (
     parse_gmail_forwarding_email,
 )
 from expenses.models import (
+    Exchange,
+    IBKRSymbolCurrency,
     PendingTransaction,
     Source,
     Stock,
@@ -44,6 +46,54 @@ def _symbol_key(symbol: str) -> str:
     'AAPL'        -> 'AAPL'
     """
     return symbol.split()[0]
+
+
+def _convert_usd_to_currency(amount_usd, target_currency: str, trade_date, user):
+    """Convert a USD amount to target_currency using Exchange rates.
+
+    Looks up the most recent exchange rate on or before trade_date.
+    Returns a Decimal or None if no rate is found.
+    """
+    from decimal import Decimal
+
+    if target_currency.upper() == "USD":
+        return Decimal(str(amount_usd))
+
+    # Direct: USD -> target
+    direct = (
+        Exchange.objects.filter(
+            user=user,
+            source_currency__iexact="USD",
+            target_currency__iexact=target_currency,
+            date__lte=trade_date,
+        )
+        .order_by("-date")
+        .first()
+    )
+    if direct:
+        try:
+            return (Decimal(str(amount_usd)) * direct.rate).quantize(Decimal("0.01"))
+        except Exception:
+            pass
+
+    # Inverse: target -> USD, then divide
+    inverse = (
+        Exchange.objects.filter(
+            user=user,
+            source_currency__iexact=target_currency,
+            target_currency__iexact="USD",
+            date__lte=trade_date,
+        )
+        .order_by("-date")
+        .first()
+    )
+    if inverse and inverse.rate:
+        try:
+            return (Decimal(str(amount_usd)) / inverse.rate).quantize(Decimal("0.01"))
+        except Exception:
+            pass
+
+    return None
 
 
 def _get_or_create_source(user, source_name: str) -> Optional[Source]:
@@ -271,12 +321,11 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
                     tx.id, virtual_tx.id, description, msg.message_id
                 )
             else:
-                # Security buy/sell: only track the asset leg.
-                # We don't know which ibkr sub-currency was used to settle the trade
-                # (it depends on IBKR account currency), so we don't create a cash debit leg.
+                # Security buy/sell: asset leg + optional cash debit in settlement currency.
                 symbol_key = _symbol_key(parsed["symbol"])       # "SUSW"
                 asset_amount = -parsed["amount"] if parsed["bought"] else parsed["amount"]
 
+                # Asset leg (virtual): ibkr:SUSW
                 tx = Tx.objects.create(
                     user=msg.user,
                     date=tx_date,
@@ -288,6 +337,39 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
                     status="confirmed",
                     is_virtual=True,
                 )
+
+                # Cash debit leg: use configured settlement currency if available
+                settlement = IBKRSymbolCurrency.objects.filter(
+                    user=msg.user, symbol=symbol_key
+                ).first()
+
+                if settlement:
+                    settle_currency = settlement.currency
+                    # Convert USD total to settlement currency using exchange rates
+                    cash_usd = parsed["total_value"] if parsed["bought"] else -parsed["total_value"]
+                    settle_amount = _convert_usd_to_currency(cash_usd, settle_currency, tx_date, msg.user)
+                    if settle_amount is not None:
+                        Tx.objects.create(
+                            user=msg.user,
+                            date=tx_date,
+                            description=description,
+                            amount=settle_amount,
+                            currency=settle_currency,
+                            source=_get_or_create_source(msg.user, f"ibkr:{settle_currency}"),
+                            external_id=external_id + ":cash" if external_id else None,
+                            status="confirmed",
+                            is_virtual=True,
+                            paired_transaction=tx,
+                        )
+                        logger.info(
+                            "✅ CREATED cash leg ibkr:%s amount=%s for %s (msg_id=%s)",
+                            settle_currency, settle_amount, description, msg.message_id
+                        )
+                    else:
+                        logger.warning(
+                            "⚠️  No exchange rate for %s→USD, cash leg skipped for %s",
+                            settle_currency, description
+                        )
 
                 stock = Stock.objects.create(
                     user=msg.user,

@@ -1,7 +1,7 @@
 """Forms for expenses app."""
 
 from django import forms
-from .models import Exchange, Transaction, Category, Project, Payee, Source, Balance, BudgetGroup, Budget, SourceBankMapping
+from .models import Exchange, Transaction, Category, Project, Payee, Source, Balance, BudgetGroup, Budget, SourceBankMapping, IBKRSymbolCurrency
 
 
 class ExchangeForm(forms.ModelForm):
@@ -199,6 +199,22 @@ class SourceBankMappingForm(forms.ModelForm):
                 choices=[('', '--- Selecciona banco ---')] + list(banks.items()),
                 label='Banco',
             )
+
+
+class IBKRSymbolCurrencyForm(forms.ModelForm):
+    class Meta:
+        model = IBKRSymbolCurrency
+        fields = ['symbol', 'currency']
+        widgets = {
+            'symbol': forms.TextInput(attrs={'placeholder': 'e.g. SUSW', 'style': 'text-transform:uppercase'}),
+            'currency': forms.TextInput(attrs={'placeholder': 'e.g. EUR', 'maxlength': '3', 'style': 'text-transform:uppercase'}),
+        }
+
+    def clean_symbol(self):
+        return self.cleaned_data['symbol'].strip().upper()
+
+    def clean_currency(self):
+        return self.cleaned_data['currency'].strip().upper()
 
 
 class TransactionForm(forms.ModelForm):

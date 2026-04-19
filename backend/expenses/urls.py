@@ -52,6 +52,11 @@ urlpatterns = [
     path("manage/source-bank-mappings/<int:pk>/edit/", views.SourceBankMappingUpdateView.as_view(), name="manage_source_bank_mapping_edit"),
     path("manage/source-bank-mappings/<int:pk>/delete/", views.SourceBankMappingDeleteView.as_view(), name="manage_source_bank_mapping_delete"),
 
+    path("manage/ibkr-symbol-currencies/", views.IBKRSymbolCurrencyListView.as_view(), name="manage_ibkr_symbol_currencies"),
+    path("manage/ibkr-symbol-currencies/add/", views.IBKRSymbolCurrencyCreateView.as_view(), name="manage_ibkr_symbol_currency_add"),
+    path("manage/ibkr-symbol-currencies/<int:pk>/edit/", views.IBKRSymbolCurrencyUpdateView.as_view(), name="manage_ibkr_symbol_currency_edit"),
+    path("manage/ibkr-symbol-currencies/<int:pk>/delete/", views.IBKRSymbolCurrencyDeleteView.as_view(), name="manage_ibkr_symbol_currency_delete"),
+
     path("manage/transactions/", views.TransactionListView.as_view(), name="manage_transactions"),
     path("manage/transactions/add/", views.TransactionCreateView.as_view(), name="manage_transaction_add"),
     path("manage/transactions/<int:pk>/edit/", views.TransactionUpdateView.as_view(), name="manage_transaction_edit"),

@@ -85,6 +85,26 @@ class SourceBankMapping(models.Model):
         return f"{self.bank_code} → {self.source.name}"
 
 
+class IBKRSymbolCurrency(models.Model):
+    """Maps an IBKR security symbol to its settlement currency.
+
+    When buying/selling a symbol, the cash leg of the trade uses this currency.
+    e.g. SUSW → EUR (Swiss Exchange ETF, settles in EUR)
+         VWRA → USD (USD-denominated ETF)
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    symbol = models.CharField(max_length=20, help_text="Ticker symbol, e.g. SUSW")
+    currency = models.CharField(max_length=3, help_text="Settlement currency, e.g. EUR")
+
+    class Meta:
+        unique_together = [('user', 'symbol')]
+        verbose_name = "IBKR symbol currency"
+        verbose_name_plural = "IBKR symbol currencies"
+
+    def __str__(self):
+        return f"{self.symbol} → {self.currency}"
+
+
 class BudgetGroup(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)

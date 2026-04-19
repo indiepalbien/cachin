@@ -4,6 +4,8 @@ One-time migration: fix existing IBKR primary transactions to match new schema.
 New schema:
 - Security trades: only a single virtual tx on ibkr:SYMBOL (no USD cash leg)
 - Forex trades: two virtual txs (ibkr:USD + ibkr:BASE_CURRENCY)
+- If a settlement currency mapping exists (IBKRSymbolCurrency), also create a
+  cash leg virtual tx on ibkr:SETTLE_CURRENCY
 
 Existing data after first backfill:
 - Security trades: primary non-virtual tx on ibkr:USD  +  virtual tx on ibkr:SYMBOL
@@ -11,6 +13,7 @@ Existing data after first backfill:
 
 Fix:
 - Security primary txs (linked via Stock): DELETE them (the virtual asset leg is correct)
+  + create the settlement cash leg if a IBKRSymbolCurrency mapping exists
 - Forex primary txs: mark is_virtual=True (both legs should be virtual)
 - Update Stock.transaction FK to point to the asset-leg virtual tx
 
@@ -19,8 +22,13 @@ Run with --dry-run first.
 from django.core.management.base import BaseCommand
 from django.db import transaction as db_transaction
 
-from expenses.models import Stock, Transaction
-from expenses.email_ingest import _is_forex
+from expenses.models import IBKRSymbolCurrency, Source, Stock, Transaction
+from expenses.email_ingest import _is_forex, _convert_usd_to_currency
+
+
+def _get_or_create_source(user, source_name):
+    obj, _ = Source.objects.get_or_create(user=user, name=source_name)
+    return obj
 
 
 class Command(BaseCommand):
@@ -51,6 +59,7 @@ class Command(BaseCommand):
         deleted = 0
         made_virtual = 0
         stock_relinked = 0
+        cash_legs_created = 0
 
         for stock in stocks_qs:
             tx = stock.transaction
@@ -85,18 +94,69 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(f" → NO asset leg found, Stock id={stock.id} will lose tx link\n")
 
+                # Check if we need to create a settlement cash leg
+                symbol_key = stock.symbol.split()[0]
+                user = tx.user
+                settlement = IBKRSymbolCurrency.objects.filter(
+                    user=user, symbol=symbol_key
+                ).first()
+                cash_leg_created = False
+
+                if settlement and asset_leg:
+                    # Check if cash leg already exists
+                    existing_cash = asset_leg.pair.filter(
+                        currency=settlement.currency, is_virtual=True
+                    ).exists()
+                    if not existing_cash:
+                        # Convert USD total to settlement currency
+                        # tx.amount is positive for buys (cash out)
+                        cash_usd = tx.amount
+                        settle_amount = _convert_usd_to_currency(
+                            cash_usd, settlement.currency, tx.date, user
+                        )
+                        if settle_amount is not None:
+                            self.stdout.write(
+                                f"    → create cash leg ibkr:{settlement.currency} "
+                                f"amount={settle_amount} for stock id={stock.id}\n"
+                            )
+                            if not dry_run:
+                                Transaction.objects.create(
+                                    user=user,
+                                    date=tx.date,
+                                    description=tx.description,
+                                    amount=settle_amount,
+                                    currency=settlement.currency,
+                                    source=_get_or_create_source(user, f"ibkr:{settlement.currency}"),
+                                    external_id=(asset_leg.external_id + ":cash") if asset_leg.external_id else None,
+                                    status="confirmed",
+                                    is_virtual=True,
+                                    paired_transaction=asset_leg,
+                                )
+                                cash_leg_created = True
+                                cash_legs_created += 1
+                        else:
+                            self.stdout.write(
+                                f"    → no exchange rate for USD→{settlement.currency} on {tx.date}, "
+                                f"cash leg skipped\n"
+                            )
+                    else:
+                        self.stdout.write(
+                            f"    → cash leg ibkr:{settlement.currency} already exists\n"
+                        )
+
                 if not dry_run:
                     with db_transaction.atomic():
-                        # Relink stock to the asset-leg virtual tx (or None if not found)
                         stock.transaction = asset_leg
                         stock.save(update_fields=["transaction"])
                         if asset_leg:
                             stock_relinked += 1
-                        # Delete the now-orphaned primary USD tx
                         tx.delete()
                     deleted += 1
 
-        self.stdout.write(f"\nSummary: {deleted} primary txs deleted, {made_virtual} made virtual, {stock_relinked} stocks relinked\n")
+        self.stdout.write(
+            f"\nSummary: {deleted} primary txs deleted, {made_virtual} made virtual, "
+            f"{stock_relinked} stocks relinked, {cash_legs_created} cash legs created\n"
+        )
         if dry_run:
             self.stdout.write(self.style.WARNING("*** DRY RUN — no changes saved ***\n"))
         else:

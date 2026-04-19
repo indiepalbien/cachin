@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}IBKR Symbol Currencies{% endblock %}
+{% block content %}
+<p><a href="{% url 'expenses:manage_dashboard' %}" class="text-accent font-bold hover:underline">← Volver</a></p>
+<h1 class="text-2xl md:text-3xl font-extrabold mb-4">IBKR: Moneda por Símbolo</h1>
+<p class="text-muted text-sm mb-4">Mapea cada símbolo de IBKR a la moneda en que liquida. Esto determina qué sub-cuenta de IBKR se debita al comprar/vender. Ejemplo: SUSW → EUR, VWRA → USD.</p>
+
+<div class="mb-4">
+  <a href="{% url 'expenses:manage_ibkr_symbol_currency_add' %}" class="bg-accent text-white px-4 py-2 rounded font-bold no-underline">
+    + Nuevo mapeo
+  </a>
+</div>
+
+{% if mappings %}
+  <table style="width:100%;border-collapse:collapse">
+    <thead>
+      <tr>
+        <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Símbolo</th>
+        <th style="text-align:left;border-bottom:2px solid var(--border);padding:.25rem 0">Moneda liquidación</th>
+        <th style="border-bottom:2px solid var(--border)"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in mappings %}
+        <tr>
+          <td style="padding:.4rem 0;border-bottom:1px dashed var(--border);font-weight:bold">{{ m.symbol }}</td>
+          <td style="padding:.4rem 0;border-bottom:1px dashed var(--border)">{{ m.currency }}</td>
+          <td style="padding:.4rem 0;text-align:right;border-bottom:1px dashed var(--border);white-space:nowrap">
+            <a href="{% url 'expenses:manage_ibkr_symbol_currency_edit' m.pk %}"
+               class="text-sm text-accent no-underline hover:underline mr-2">Editar</a>
+            <a href="{% url 'expenses:manage_ibkr_symbol_currency_delete' m.pk %}"
+               class="text-sm text-red-500 no-underline hover:underline">Borrar</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <div class="my-4 p-4 border-2 border-dashed border-border rounded text-muted text-center">
+    No hay mapeos configurados.
+    <a href="{% url 'expenses:manage_ibkr_symbol_currency_add' %}" class="text-accent font-bold">Crear el primero</a>
+  </div>
+{% endif %}
+{% endblock %}
