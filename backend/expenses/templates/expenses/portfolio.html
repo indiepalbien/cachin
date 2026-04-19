@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Portfolio — Cachin{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'profile' %}" class="text-accent font-bold hover:underline">← Volver al perfil</a></p>
+<h1 class="text-2xl md:text-3xl font-extrabold mb-6">Portfolio IBKR</h1>
+
+{% if holdings %}
+<div class="border-3 border-border rounded shadow-brutal overflow-hidden">
+  <table class="w-full border-collapse">
+    <thead>
+      <tr class="bg-accent text-white">
+        <th class="text-left px-4 py-3 font-extrabold">Activo</th>
+        <th class="text-right px-4 py-3 font-extrabold">Tenencia</th>
+        <th class="text-left px-4 py-3 font-extrabold">Tipo</th>
+        <th class="text-right px-4 py-3 font-extrabold">Transacciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in holdings %}
+      <tr class="border-t-2 border-border hover:bg-gray-50">
+        <td class="px-4 py-3 font-bold text-lg">{{ h.symbol }}</td>
+        <td class="px-4 py-3 text-right font-mono">
+          {% if h.is_currency %}
+            {{ h.net_amount|floatformat:2 }} {{ h.symbol }}
+          {% else %}
+            {{ h.net_amount|floatformat:4 }} shares
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-sm text-gray-600">
+          {% if h.is_currency %}
+            Moneda
+          {% else %}
+            Activo
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-right">
+          <a href="{% url 'expenses:manage_transactions' %}?source={{ h.source.name }}"
+             class="text-accent font-bold hover:underline text-sm">Ver →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-4 text-sm text-gray-500">
+  Los saldos reflejan únicamente las transacciones registradas, no el saldo real de la cuenta.
+</p>
+{% else %}
+<div class="border-3 border-border rounded shadow-brutal p-6 text-center text-gray-500">
+  <p class="text-lg">No hay posiciones IBKR registradas aún.</p>
+  <p class="text-sm mt-2">Las posiciones aparecerán automáticamente al procesar emails de Interactive Brokers.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -3138,3 +3138,31 @@ def reject_session_view(request, session_id):
         logger.error(f"Error rejecting session {session_id}: {e}", exc_info=True)
         messages.error(request, f'Error al rechazar sesión: {str(e)}')
         return redirect('expenses:image_results', session_id=session_id)
+
+
+@login_required
+def portfolio_view(request):
+    """Show current IBKR holdings grouped by sub-source (ibkr:USD, ibkr:SUSW, etc.)."""
+    ibkr_sources = Source.objects.filter(
+        user=request.user,
+        name__startswith="ibkr:"
+    ).order_by("name")
+
+    holdings = []
+    for source in ibkr_sources:
+        symbol = source.name[len("ibkr:"):]
+        net = Transaction.objects.filter(
+            user=request.user,
+            source=source,
+        ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+        # Convention: positive amount = expense (cash out), negative = income (received).
+        # We negate so that holdings show as positive numbers.
+        holdings.append({
+            "symbol": symbol,
+            "source": source,
+            "net_amount": -net,
+            "is_currency": len(symbol) <= 3,
+        })
+
+    return render(request, "expenses/portfolio.html", {"holdings": holdings})

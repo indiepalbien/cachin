@@ -239,7 +239,7 @@ class Transaction(models.Model):
     date = models.DateField()
     description = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=14, decimal_places=2)
-    currency = models.CharField(max_length=3)
+    currency = models.CharField(max_length=20)
     amount_usd = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, 
                                      help_text="Pre-calculated USD amount for performance")
     source = models.ForeignKey(Source, on_delete=models.SET_NULL, null=True, blank=True)
@@ -267,6 +267,18 @@ class Transaction(models.Model):
     is_reimbursable = models.BooleanField(
         default=False,
         help_text="Mark if this expense will be reimbursed. Excluded from category totals and budgets."
+    )
+    is_virtual = models.BooleanField(
+        default=False,
+        help_text="Virtual counter-leg of a trade (e.g., shares received or IBKR deposit). Not a real cash flow."
+    )
+    paired_transaction = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pair',
+        help_text="The other leg of a paired trade or transfer transaction."
     )
 
     def __str__(self):

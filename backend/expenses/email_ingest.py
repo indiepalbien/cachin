@@ -1,4 +1,5 @@
 import logging
+import re as _re
 from datetime import date, datetime as datetime_class
 from email.utils import parseaddr
 from typing import Optional
@@ -26,6 +27,23 @@ from expenses.models import (
 
 
 logger = logging.getLogger(__name__)
+
+_FOREX_PATTERN = _re.compile(r'^[A-Z]{3}\.[A-Z]{3}$')
+_IBKR_DEPOSIT_MARKER = "interactive brokers"
+
+
+def _is_forex(symbol: str) -> bool:
+    """Return True if symbol is a currency pair like EUR.USD."""
+    return bool(_FOREX_PATTERN.match(symbol))
+
+
+def _symbol_key(symbol: str) -> str:
+    """Extract the primary ticker for use as a sub-source key.
+
+    'SUSW LSEETF' -> 'SUSW'
+    'AAPL'        -> 'AAPL'
+    """
+    return symbol.split()[0]
 
 
 def _get_or_create_source(user, source_name: str) -> Optional[Source]:
@@ -207,42 +225,78 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
             msg.save(update_fields=["processed_at"])
             return 1
 
-        # Create both Stock and Transaction records
+        # Create Transaction records (and optionally Stock)
         with transaction.atomic():
             tx_date = msg.date.date() if msg.date else date.today()
 
-            # Create Transaction for cash flow
             action = "BUY" if parsed["bought"] else "SELL"
             # For buys: positive amount (cash out), for sells: negative amount (cash in)
             cash_amount = parsed["total_value"] if parsed["bought"] else -parsed["total_value"]
+            description = f"{action} {parsed['amount']} {parsed['symbol']} @ ${parsed['unitprice']}"
+            forex = _is_forex(parsed["symbol"])
 
+            # Primary transaction: cash leg (USD out/in)
             tx = Tx.objects.create(
                 user=msg.user,
                 date=tx_date,
-                description=f"{action} {parsed['amount']} {parsed['symbol']} @ ${parsed['unitprice']}",
+                description=description,
                 amount=cash_amount,
                 currency="USD",
-                source=_get_or_create_source(msg.user, "ibkr"),
+                source=_get_or_create_source(msg.user, "ibkr:USD"),
                 external_id=external_id,
                 status="confirmed",
             )
 
-            # Create Stock record
-            stock = Stock.objects.create(
+            # Paired transaction: asset leg
+            if forex:
+                # e.g. EUR.USD: base=EUR gained, quote=USD spent
+                base_currency = parsed["symbol"].split(".")[0]   # "EUR"
+                paired_amount = -parsed["amount"] if parsed["bought"] else parsed["amount"]
+                paired_source_name = f"ibkr:{base_currency}"
+                paired_currency = base_currency
+            else:
+                symbol_key = _symbol_key(parsed["symbol"])       # "SUSW"
+                paired_amount = -parsed["amount"] if parsed["bought"] else parsed["amount"]
+                paired_source_name = f"ibkr:{symbol_key}"
+                paired_currency = symbol_key
+
+            virtual_tx = Tx.objects.create(
                 user=msg.user,
                 date=tx_date,
-                symbol=parsed["symbol"],
-                bought=parsed["bought"],
-                amount=parsed["amount"],
-                unitprice=parsed["unitprice"],
-                external_id=external_id,
-                transaction=tx,
+                description=description,
+                amount=paired_amount,
+                currency=paired_currency,
+                source=_get_or_create_source(msg.user, paired_source_name),
+                external_id=external_id + ":pair" if external_id else None,
+                status="confirmed",
+                is_virtual=True,
+                paired_transaction=tx,
             )
 
-        logger.info(
-            "✅ CREATED stock id=%s and transaction id=%s for %s %s shares of %s (msg_id=%s)",
-            stock.id, tx.id, action, stock.amount, stock.symbol, msg.message_id
-        )
+            # Stock record for securities only (not forex)
+            stock = None
+            if not forex:
+                stock = Stock.objects.create(
+                    user=msg.user,
+                    date=tx_date,
+                    symbol=parsed["symbol"],
+                    bought=parsed["bought"],
+                    amount=parsed["amount"],
+                    unitprice=parsed["unitprice"],
+                    external_id=external_id,
+                    transaction=tx,
+                )
+
+        if stock:
+            logger.info(
+                "✅ CREATED stock id=%s, tx id=%s, virtual_tx id=%s for %s %s %s (msg_id=%s)",
+                stock.id, tx.id, virtual_tx.id, action, stock.amount, stock.symbol, msg.message_id
+            )
+        else:
+            logger.info(
+                "✅ CREATED forex tx id=%s, virtual_tx id=%s for %s (msg_id=%s)",
+                tx.id, virtual_tx.id, description, msg.message_id
+            )
         msg.processed_at = timezone.now()
         msg.save(update_fields=["processed_at"])
         return 1
@@ -314,6 +368,27 @@ def _process_midinero_alert(msg: UserEmailMessage) -> int:
         return _handle_duplicate(msg, parsed, exc)
 
 
+def _maybe_create_ibkr_deposit_counterpart(user, tx: Tx) -> None:
+    """If a bank transaction is an IBKR deposit, auto-create the ibkr:USD credit leg."""
+    if _IBKR_DEPOSIT_MARKER not in tx.description.lower():
+        return
+    if tx.paired_transaction_id or tx.pair.exists():
+        return  # already paired
+    Tx.objects.create(
+        user=user,
+        date=tx.date,
+        description=tx.description,
+        amount=-tx.amount,
+        currency=tx.currency,
+        source=_get_or_create_source(user, "ibkr:USD"),
+        status="confirmed",
+        is_virtual=True,
+        paired_transaction=tx,
+        comments=f"Auto-created IBKR deposit counterpart for tx #{tx.pk}",
+    )
+    logger.info("✅ Created ibkr:USD deposit counterpart for tx id=%s", tx.pk)
+
+
 def _create_transaction(msg: UserEmailMessage, parsed: dict) -> int:
     """Create a Transaction from parsed email data."""
     external_id = parsed.get("external_id")
@@ -350,6 +425,7 @@ def _create_transaction(msg: UserEmailMessage, parsed: dict) -> int:
             external_id=external_id,
             status="confirmed",
         )
+    _maybe_create_ibkr_deposit_counterpart(msg.user, tx)
     logger.info(
         "✅ CREATED transaction id=%s amount=%s %s description='%s' (msg_id=%s)",
         tx.id, tx.amount, tx.currency, tx.description[:50], msg.message_id
