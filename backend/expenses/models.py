@@ -264,6 +264,10 @@ class Transaction(models.Model):
         null=True, blank=True,
         help_text="First month of the amortization window. Defaults to the transaction's own month if left blank."
     )
+    is_reimbursable = models.BooleanField(
+        default=False,
+        help_text="Mark if this expense will be reimbursed. Excluded from category totals and budgets."
+    )
 
     def __str__(self):
         return f"{self.date} {self.amount} {self.currency}"

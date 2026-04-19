@@ -345,6 +345,13 @@ function populateTable(transactions) {
                                data-index="${index}"
                                value="${txn.date || ''}">
                     </div>
+
+                    <div class="flex items-center gap-2 col-span-full mt-1">
+                        <input type="checkbox"
+                               class="txn-reimbursable w-5 h-5 border-2 border-border cursor-pointer"
+                               data-index="${index}">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wide cursor-pointer">↩ A reembolsar (excluir de totales)</label>
+                    </div>
                 </div>
             </div>
         `;
@@ -417,6 +424,11 @@ function confirmTransactions() {
             if (amortizeStartInput && amortizeStartInput.value) {
                 txn.amortize_start_date = amortizeStartInput.value;
             }
+        }
+
+        const reimbursableInput = document.querySelector(`.txn-reimbursable[data-index="${i}"]`);
+        if (reimbursableInput && reimbursableInput.checked) {
+            txn.is_reimbursable = true;
         }
 
         return txn;

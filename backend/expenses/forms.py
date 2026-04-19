@@ -206,7 +206,7 @@ class TransactionForm(forms.ModelForm):
 
     class Meta:
         model = Transaction
-        fields = ["date", "description", "amount", "currency", "source", "category", "project", "payee", "comments", "amortize_months", "amortize_start_date"]
+        fields = ["date", "description", "amount", "currency", "source", "category", "project", "payee", "comments", "amortize_months", "amortize_start_date", "is_reimbursable"]
         widgets = {
             'date': forms.DateInput(attrs={
                 'type': 'date',

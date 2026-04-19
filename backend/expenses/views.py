@@ -1547,6 +1547,8 @@ def bulk_confirm_view(request):
                     except (ValueError, TypeError):
                         pass
 
+                is_reimbursable = bool(txn_data.get("is_reimbursable", False))
+
                 # Create transaction
                 transaction = Transaction.objects.create(
                     user=user,
@@ -1559,6 +1561,7 @@ def bulk_confirm_view(request):
                     payee=payee,
                     amortize_months=amortize_months,
                     amortize_start_date=amortize_start_date,
+                    is_reimbursable=is_reimbursable,
                 )
                 
                 created_count += 1
@@ -1774,8 +1777,8 @@ def get_category_expenses(user, month_qs, convert_to_usd=False, sel_year=None, s
         return (tx.amount / tx.amortize_months).quantize(Decimal('0.01'))
 
     # Collect all transactions to process: those in the month plus amortized ones from
-    # other months whose window covers this month.
-    all_transactions = list(month_qs.select_related('category'))
+    # other months whose window covers this month. Reimbursable transactions are excluded.
+    all_transactions = list(month_qs.exclude(is_reimbursable=True).select_related('category'))
 
     if sel_year and sel_month:
         first_day = datetime.date(sel_year, sel_month, 1)
@@ -1790,6 +1793,7 @@ def get_category_expenses(user, month_qs, convert_to_usd=False, sel_year=None, s
                 amortize_months__isnull=False,
                 amortize_start_date__isnull=False,
                 amortize_start_date__lte=first_day,
+                is_reimbursable=False,
             )
             .exclude(date__gte=first_day, date__lt=next_first)
             .exclude(amount=0)
@@ -2289,14 +2293,42 @@ def api_budget_expenses(request):
 
         category_ids = list(effective.categories.values_list('id', flat=True))
 
-        spent = Transaction.objects.filter(
+        # Build transaction list: in-month transactions + amortized from other months
+        budget_txs = list(
+            Transaction.objects.filter(
+                user=user,
+                date__gte=first_day,
+                date__lt=next_first,
+                category_id__in=category_ids,
+                is_reimbursable=False,
+            ).exclude(amount=0)
+        )
+        # Add amortized transactions from other months whose window covers this month
+        extra_amortized = Transaction.objects.filter(
             user=user,
-            date__gte=first_day,
-            date__lt=next_first,
+            amortize_months__isnull=False,
+            amortize_start_date__isnull=False,
+            amortize_start_date__lte=first_day,
             category_id__in=category_ids,
-        ).exclude(amount=0).aggregate(
-            total=Sum('amount_usd')
-        )['total'] or Decimal('0')
+            is_reimbursable=False,
+        ).exclude(date__gte=first_day, date__lt=next_first).exclude(amount=0)
+        for tx in extra_amortized:
+            start = tx.amortize_start_date.replace(day=1)
+            if _amortization_covers_month(start, tx.amortize_months, sel_year, sel_month):
+                budget_txs.append(tx)
+
+        spent = Decimal('0')
+        for tx in budget_txs:
+            usd = tx.to_usd()
+            if usd is None:
+                continue
+            if tx.amortize_months:
+                start = (tx.amortize_start_date or tx.date).replace(day=1)
+                if not _amortization_covers_month(start, tx.amortize_months, sel_year, sel_month):
+                    continue
+                spent += (usd / tx.amortize_months).quantize(Decimal('0.01'))
+            else:
+                spent += usd
 
         limit = effective.amount
         remaining = limit - spent

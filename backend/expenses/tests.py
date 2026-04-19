@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from .models import Category, Transaction
+from .models import Budget, BudgetGroup, Category, Transaction
 from .views import _amortization_covers_month, get_category_expenses
 
 User = get_user_model()
@@ -59,7 +59,7 @@ class GetCategoryExpensesTests(TestCase):
         self.user = User.objects.create_user(username="testuser", password="pass")
         self.cat = Category.objects.create(user=self.user, name="Alquiler", counts_to_total=True)
 
-    def _make_tx(self, amount, date, amortize_months=None, amortize_start_date=None, category=None):
+    def _make_tx(self, amount, date, amortize_months=None, amortize_start_date=None, category=None, is_reimbursable=False):
         return Transaction.objects.create(
             user=self.user,
             date=datetime.date.fromisoformat(date),
@@ -69,6 +69,7 @@ class GetCategoryExpensesTests(TestCase):
             category=category or self.cat,
             amortize_months=amortize_months,
             amortize_start_date=datetime.date.fromisoformat(amortize_start_date) if amortize_start_date else None,
+            is_reimbursable=is_reimbursable,
         )
 
     def _month_qs(self, year, month):
@@ -167,3 +168,102 @@ class GetCategoryExpensesTests(TestCase):
         qs = self._month_qs(2026, 4)
         cat_exp, _, subtotals = get_category_expenses(self.user, qs)
         self.assertEqual(cat_exp[0]["total"], "100.00")
+
+    # --- reimbursable transactions ---
+
+    def test_reimbursable_excluded_from_category_totals(self):
+        self._make_tx(500, "2026-04-01", is_reimbursable=True)
+        qs = self._month_qs(2026, 4)
+        cat_exp, _, subtotals = get_category_expenses(self.user, qs, sel_year=2026, sel_month=4)
+        self.assertEqual(cat_exp, [])
+        self.assertEqual(subtotals, {})
+
+    def test_reimbursable_excluded_from_subtotals_even_with_normal_tx(self):
+        self._make_tx(100, "2026-04-01")
+        self._make_tx(500, "2026-04-01", is_reimbursable=True)
+        qs = self._month_qs(2026, 4)
+        cat_exp, _, subtotals = get_category_expenses(self.user, qs, sel_year=2026, sel_month=4)
+        self.assertEqual(cat_exp[0]["total"], "100.00")
+        self.assertEqual(subtotals["USD"], "100.00")
+
+    def test_reimbursable_amortized_from_past_month_excluded(self):
+        # An amortized reimbursable tx from April should not appear in September
+        self._make_tx(1000, "2026-04-01", amortize_months=10, amortize_start_date="2026-04-01", is_reimbursable=True)
+        qs = self._month_qs(2026, 9)
+        cat_exp, _, subtotals = get_category_expenses(self.user, qs, sel_year=2026, sel_month=9)
+        self.assertEqual(cat_exp, [])
+
+
+class BudgetExpensesTests(TestCase):
+    """Tests for budget spent calculation with amortization and reimbursable."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="budgetuser", password="pass")
+        self.cat = Category.objects.create(user=self.user, name="Living", counts_to_total=True)
+        self.group = BudgetGroup.objects.create(user=self.user, name="mensual", currency="USD")
+        self.budget = Budget.objects.create(
+            user=self.user,
+            group=self.group,
+            effective_date=datetime.date(2026, 1, 1),
+            amount=Decimal("1000.00"),
+        )
+        self.budget.categories.add(self.cat)
+
+    def _make_tx(self, amount, date, amortize_months=None, amortize_start_date=None, is_reimbursable=False):
+        return Transaction.objects.create(
+            user=self.user,
+            date=datetime.date.fromisoformat(date),
+            description="Test",
+            amount=Decimal(str(amount)),
+            currency="USD",
+            amount_usd=Decimal(str(amount)),
+            category=self.cat,
+            amortize_months=amortize_months,
+            amortize_start_date=datetime.date.fromisoformat(amortize_start_date) if amortize_start_date else None,
+            is_reimbursable=is_reimbursable,
+        )
+
+    def _call_api(self, year, month):
+        from django.test import RequestFactory
+        from .views import api_budget_expenses
+        import django_htmx  # may not be available; use plain request
+        factory = RequestFactory()
+        request = factory.get(f"/api/budget-expenses/?m={year:04d}-{month:02d}")
+        request.user = self.user
+        request.htmx = False
+        response = api_budget_expenses(request)
+        import json
+        return json.loads(response.content)
+
+    def test_normal_tx_counted_in_budget(self):
+        self._make_tx(200, "2026-04-10")
+        data = self._call_api(2026, 4)
+        row = data["budget_rows"][0]
+        self.assertEqual(row["spent"], "200.00")
+
+    def test_amortized_tx_uses_fraction_in_budget(self):
+        self._make_tx(1000, "2026-04-01", amortize_months=10, amortize_start_date="2026-04-01")
+        data = self._call_api(2026, 4)
+        self.assertEqual(data["budget_rows"][0]["spent"], "100.00")
+
+    def test_amortized_tx_from_past_month_appears_in_budget(self):
+        self._make_tx(1000, "2026-04-01", amortize_months=10, amortize_start_date="2026-04-01")
+        data = self._call_api(2026, 9)
+        self.assertEqual(data["budget_rows"][0]["spent"], "100.00")
+
+    def test_amortized_tx_not_counted_after_window(self):
+        # 3-month window Apr-Jun; July should show 0
+        self._make_tx(300, "2026-04-01", amortize_months=3, amortize_start_date="2026-04-01")
+        data = self._call_api(2026, 7)
+        self.assertEqual(data["budget_rows"][0]["spent"], "0.00")
+
+    def test_reimbursable_excluded_from_budget(self):
+        self._make_tx(500, "2026-04-01", is_reimbursable=True)
+        data = self._call_api(2026, 4)
+        self.assertEqual(data["budget_rows"][0]["spent"], "0.00")
+
+    def test_reimbursable_excluded_budget_alongside_normal(self):
+        self._make_tx(200, "2026-04-01")
+        self._make_tx(500, "2026-04-01", is_reimbursable=True)
+        data = self._call_api(2026, 4)
+        self.assertEqual(data["budget_rows"][0]["spent"], "200.00")
