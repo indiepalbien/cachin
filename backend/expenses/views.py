@@ -2130,13 +2130,12 @@ def api_source_expenses(request):
     # Get transactions from earliest balance start to end of selected month
     next_first = datetime.date(ny, nm, 1)
 
-    # Include all non-zero, non-virtual transactions
+    # Include all non-zero transactions (virtual ibkr tracking entries included)
     month_qs = Transaction.objects.filter(
         user=user,
         date__gte=earliest_start,
         date__lt=next_first,
         source__isnull=False,
-        is_virtual=False,
     ).exclude(amount=0)
 
     if convert_to_usd:
@@ -2163,7 +2162,13 @@ def api_source_expenses(request):
             amount_usd = tx.to_usd()
 
             if amount_usd is None:
-                missing_rates_count += 1
+                if tx.is_virtual:
+                    # Non-convertible virtual entry (e.g. SUSW shares) — show in native currency
+                    if key not in source_currency_totals:
+                        source_currency_totals[key] = Decimal('0')
+                    source_currency_totals[key] += tx.amount
+                else:
+                    missing_rates_count += 1
                 continue
 
             if key not in source_currency_totals:

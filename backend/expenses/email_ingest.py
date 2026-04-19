@@ -235,47 +235,60 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
             description = f"{action} {parsed['amount']} {parsed['symbol']} @ ${parsed['unitprice']}"
             forex = _is_forex(parsed["symbol"])
 
-            # Primary transaction: cash leg (USD out/in)
-            tx = Tx.objects.create(
-                user=msg.user,
-                date=tx_date,
-                description=description,
-                amount=cash_amount,
-                currency="USD",
-                source=_get_or_create_source(msg.user, "ibkr:USD"),
-                external_id=external_id,
-                status="confirmed",
-            )
-
-            # Paired transaction: asset leg
             if forex:
-                # e.g. EUR.USD: base=EUR gained, quote=USD spent
+                # Forex (e.g. EUR.USD): two virtual legs — USD out, base currency in.
+                # Both are virtual (internal IBKR movement).
                 base_currency = parsed["symbol"].split(".")[0]   # "EUR"
+
+                tx = Tx.objects.create(
+                    user=msg.user,
+                    date=tx_date,
+                    description=description,
+                    amount=cash_amount,
+                    currency="USD",
+                    source=_get_or_create_source(msg.user, "ibkr:USD"),
+                    external_id=external_id,
+                    status="confirmed",
+                    is_virtual=True,
+                )
+
                 paired_amount = -parsed["amount"] if parsed["bought"] else parsed["amount"]
-                paired_source_name = f"ibkr:{base_currency}"
-                paired_currency = base_currency
+                virtual_tx = Tx.objects.create(
+                    user=msg.user,
+                    date=tx_date,
+                    description=description,
+                    amount=paired_amount,
+                    currency=base_currency,
+                    source=_get_or_create_source(msg.user, f"ibkr:{base_currency}"),
+                    external_id=external_id + ":pair" if external_id else None,
+                    status="confirmed",
+                    is_virtual=True,
+                    paired_transaction=tx,
+                )
+                stock = None
+                logger.info(
+                    "✅ CREATED forex virtual txs id=%s+%s for %s (msg_id=%s)",
+                    tx.id, virtual_tx.id, description, msg.message_id
+                )
             else:
+                # Security buy/sell: only track the asset leg.
+                # We don't know which ibkr sub-currency was used to settle the trade
+                # (it depends on IBKR account currency), so we don't create a cash debit leg.
                 symbol_key = _symbol_key(parsed["symbol"])       # "SUSW"
-                paired_amount = -parsed["amount"] if parsed["bought"] else parsed["amount"]
-                paired_source_name = f"ibkr:{symbol_key}"
-                paired_currency = symbol_key
+                asset_amount = -parsed["amount"] if parsed["bought"] else parsed["amount"]
 
-            virtual_tx = Tx.objects.create(
-                user=msg.user,
-                date=tx_date,
-                description=description,
-                amount=paired_amount,
-                currency=paired_currency,
-                source=_get_or_create_source(msg.user, paired_source_name),
-                external_id=external_id + ":pair" if external_id else None,
-                status="confirmed",
-                is_virtual=True,
-                paired_transaction=tx,
-            )
+                tx = Tx.objects.create(
+                    user=msg.user,
+                    date=tx_date,
+                    description=description,
+                    amount=asset_amount,
+                    currency=symbol_key,
+                    source=_get_or_create_source(msg.user, f"ibkr:{symbol_key}"),
+                    external_id=external_id,
+                    status="confirmed",
+                    is_virtual=True,
+                )
 
-            # Stock record for securities only (not forex)
-            stock = None
-            if not forex:
                 stock = Stock.objects.create(
                     user=msg.user,
                     date=tx_date,
@@ -286,17 +299,10 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
                     external_id=external_id,
                     transaction=tx,
                 )
-
-        if stock:
-            logger.info(
-                "✅ CREATED stock id=%s, tx id=%s, virtual_tx id=%s for %s %s %s (msg_id=%s)",
-                stock.id, tx.id, virtual_tx.id, action, stock.amount, stock.symbol, msg.message_id
-            )
-        else:
-            logger.info(
-                "✅ CREATED forex tx id=%s, virtual_tx id=%s for %s (msg_id=%s)",
-                tx.id, virtual_tx.id, description, msg.message_id
-            )
+                logger.info(
+                    "✅ CREATED stock id=%s and virtual tx id=%s for %s %s %s (msg_id=%s)",
+                    stock.id, tx.id, action, parsed["amount"], parsed["symbol"], msg.message_id
+                )
         msg.processed_at = timezone.now()
         msg.save(update_fields=["processed_at"])
         return 1
