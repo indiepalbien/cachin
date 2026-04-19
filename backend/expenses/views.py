@@ -1778,7 +1778,7 @@ def get_category_expenses(user, month_qs, convert_to_usd=False, sel_year=None, s
 
     # Collect all transactions to process: those in the month plus amortized ones from
     # other months whose window covers this month. Reimbursable transactions are excluded.
-    all_transactions = list(month_qs.exclude(is_reimbursable=True).select_related('category'))
+    all_transactions = list(month_qs.exclude(is_reimbursable=True).exclude(is_virtual=True).select_related('category'))
 
     if sel_year and sel_month:
         first_day = datetime.date(sel_year, sel_month, 1)
@@ -1794,6 +1794,7 @@ def get_category_expenses(user, month_qs, convert_to_usd=False, sel_year=None, s
                 amortize_start_date__isnull=False,
                 amortize_start_date__lte=first_day,
                 is_reimbursable=False,
+                is_virtual=False,
             )
             .exclude(date__gte=first_day, date__lt=next_first)
             .exclude(amount=0)
@@ -1931,11 +1932,12 @@ def api_category_expenses(request):
     ny, nm = next_month(sel_year, sel_month)
     next_first = datetime.date(ny, nm, 1)
 
-    # Include all non-zero transactions (use absolute values in aggregation)
+    # Include all non-zero, non-virtual transactions (use absolute values in aggregation)
     month_qs = Transaction.objects.filter(
         user=user,
         date__gte=first_day,
         date__lt=next_first,
+        is_virtual=False,
     ).exclude(amount=0)
 
     # Use helper function to calculate expenses (pass sel_year/sel_month for amortization)
@@ -1976,8 +1978,8 @@ def api_project_expenses(request):
     except UserPreferences.DoesNotExist:
         convert_to_usd = False
 
-    # Get all transactions with a project (filter out null projects, include both income/expenses)
-    all_txs = Transaction.objects.filter(user=user, project__isnull=False).exclude(amount=0)
+    # Get all non-virtual transactions with a project (filter out null projects, include both income/expenses)
+    all_txs = Transaction.objects.filter(user=user, project__isnull=False, is_virtual=False).exclude(amount=0)
 
     if convert_to_usd:
         # Convert to USD and group by project (keep sign: positive = expense, negative = income)
@@ -2128,12 +2130,13 @@ def api_source_expenses(request):
     # Get transactions from earliest balance start to end of selected month
     next_first = datetime.date(ny, nm, 1)
 
-    # Include all non-zero transactions
+    # Include all non-zero, non-virtual transactions
     month_qs = Transaction.objects.filter(
         user=user,
         date__gte=earliest_start,
         date__lt=next_first,
         source__isnull=False,
+        is_virtual=False,
     ).exclude(amount=0)
 
     if convert_to_usd:
@@ -2301,6 +2304,7 @@ def api_budget_expenses(request):
                 date__lt=next_first,
                 category_id__in=category_ids,
                 is_reimbursable=False,
+                is_virtual=False,
             ).exclude(amount=0)
         )
         # Add amortized transactions from other months whose window covers this month
@@ -2311,6 +2315,7 @@ def api_budget_expenses(request):
             amortize_start_date__lte=first_day,
             category_id__in=category_ids,
             is_reimbursable=False,
+            is_virtual=False,
         ).exclude(date__gte=first_day, date__lt=next_first).exclude(amount=0)
         for tx in extra_amortized:
             start = tx.amortize_start_date.replace(day=1)
