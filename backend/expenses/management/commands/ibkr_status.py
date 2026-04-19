@@ -48,13 +48,18 @@ class Command(BaseCommand):
             )
 
         if reprocess:
-            self.stdout.write("\n--- REPROCESSING ---\n")
-            for msg in ibkr_qs.filter(processed_at__isnull=False):
+            self.stdout.write("\n--- REPROCESSING (errors only) ---\n")
+            errored = ibkr_qs.filter(processing_error__isnull=False).exclude(processing_error="")
+            self.stdout.write(f"Found {errored.count()} emails with errors to reprocess\n")
+            for msg in errored:
                 self.stdout.write(f"  Reprocessing msg id={msg.id} subject='{(msg.subject or '')[:60]}'\n")
                 msg.processed_at = None
                 msg.processing_error = ""
                 msg.save(update_fields=["processed_at", "processing_error"])
                 result = _process_ibkr_trade(msg)
-                self.stdout.write(f"    → result={result}\n")
+                if msg.processing_error:
+                    self.stdout.write(self.style.ERROR(f"    → STILL FAILED: {msg.processing_error[:80]}\n"))
+                else:
+                    self.stdout.write(self.style.SUCCESS(f"    → OK result={result}\n"))
 
         self.stdout.write(self.style.SUCCESS("Done.\n"))

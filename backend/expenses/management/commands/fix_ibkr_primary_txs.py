@@ -36,7 +36,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--dry-run", action="store_true")
-        parser.add_argument("--since", default="2026-04-01")
+        parser.add_argument("--since", default="2020-01-01")
         parser.add_argument("--user-id", type=int, default=None)
 
     def handle(self, *args, **options):
