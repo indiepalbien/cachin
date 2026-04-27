@@ -17,10 +17,15 @@ class Command(BaseCommand):
         tx = Transaction.objects.get(id=options["tx_id"], user_id=options["user_id"])
         cat, created = Category.objects.get_or_create(
             user_id=options["user_id"], name=cat_name,
-            defaults={"counts_to_total": False},
+            defaults={"counts_to_total": True},
         )
         if created:
-            self.stdout.write(f"Created new category: '{cat_name}' (counts_to_total=False)\n")
+            self.stdout.write(f"Created new category: '{cat_name}'\n")
+        # Ensure counts_to_total is True
+        if not cat.counts_to_total:
+            cat.counts_to_total = True
+            cat.save(update_fields=["counts_to_total"])
+            self.stdout.write(f"Fixed '{cat.name}' counts_to_total → True\n")
         old = tx.category.name if tx.category else "None"
         tx.category = cat
         tx.save(update_fields=["category"])
