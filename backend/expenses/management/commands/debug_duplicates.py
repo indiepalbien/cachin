@@ -1,4 +1,5 @@
 """Debug duplicate and categorization issues."""
+import datetime
 from django.core.management.base import BaseCommand
 
 
@@ -7,10 +8,52 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--user-id", type=int, default=7)
+        parser.add_argument("--date", type=str, default=None,
+                            help="Show txs/emails for a specific date (YYYY-MM-DD)")
 
     def handle(self, *args, **options):
         from expenses.models import PendingTransaction, Transaction, UserEmailMessage
         user_id = options["user_id"]
+
+        # Date-specific view
+        if options["date"]:
+            target = datetime.date.fromisoformat(options["date"])
+            self._show_date(user_id, target)
+            return
+
+        self._show_full(user_id)
+
+    def _show_date(self, user_id, target):
+        from expenses.models import Transaction, UserEmailMessage
+
+        txs = Transaction.objects.filter(
+            user_id=user_id, date=target
+        ).order_by("id").select_related("source", "category")
+        self.stdout.write(f"\n=== TXS ON {target}: {txs.count()} ===\n")
+        for t in txs:
+            src = t.source.name if t.source else "—"
+            cat = t.category.name if t.category else "—"
+            virt = "V" if t.is_virtual else "R"
+            self.stdout.write(
+                f"  [{virt}] id={t.id:5d} {t.amount:>10.2f} {t.currency:<5s} "
+                f"src={src:<15s} cat={cat:<15s} "
+                f"ext_id={t.external_id[:35] if t.external_id else 'None':<35s} "
+                f"'{t.description[:45]}'\n"
+            )
+
+        emails = UserEmailMessage.objects.filter(
+            user_id=user_id, date__date=target
+        ).order_by("id")
+        self.stdout.write(f"\n=== EMAILS ON {target}: {emails.count()} ===\n")
+        for e in emails:
+            err = f" ERR={e.processing_error[:40]}" if e.processing_error else ""
+            self.stdout.write(
+                f"  id={e.id} from='{(e.from_address or '')[:40]}' "
+                f"subj='{(e.subject or '')[:55]}'{err}\n"
+            )
+
+    def _show_full(self, user_id):
+        from expenses.models import PendingTransaction, Transaction, UserEmailMessage, Category
 
         # Pending transactions (duplicates)
         pts = PendingTransaction.objects.filter(user_id=user_id).order_by("-id")

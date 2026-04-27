@@ -17,6 +17,7 @@ from expenses.email_parsers.gmail_forwarding import (
     parse_gmail_forwarding_email,
 )
 from expenses.models import (
+    Category,
     Exchange,
     IBKRSymbolCurrency,
     PendingTransaction,
@@ -94,6 +95,15 @@ def _convert_usd_to_currency(amount_usd, target_currency: str, trade_date, user)
             pass
 
     return None
+
+
+def _get_investments_category(user):
+    """Get or create the 'investments' category for IBKR transactions."""
+    cat, _ = Category.objects.get_or_create(
+        user=user, name="investments",
+        defaults={"counts_to_total": False},
+    )
+    return cat
 
 
 def _get_or_create_source(user, source_name: str) -> Optional[Source]:
@@ -278,6 +288,7 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
         # Create Transaction records (and optionally Stock)
         with transaction.atomic():
             tx_date = msg.date.date() if msg.date else date.today()
+            invest_cat = _get_investments_category(msg.user)
 
             action = "BUY" if parsed["bought"] else "SELL"
             # For buys: positive amount (cash out), for sells: negative amount (cash in)
@@ -300,6 +311,7 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
                     external_id=external_id,
                     status="confirmed",
                     is_virtual=True,
+                    category=invest_cat,
                 )
 
                 paired_amount = -parsed["amount"] if parsed["bought"] else parsed["amount"]
@@ -314,6 +326,7 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
                     status="confirmed",
                     is_virtual=True,
                     paired_transaction=tx,
+                    category=invest_cat,
                 )
                 stock = None
                 logger.info(
@@ -336,6 +349,7 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
                     external_id=external_id,
                     status="confirmed",
                     is_virtual=True,
+                    category=invest_cat,
                 )
 
                 # Cash debit leg: use configured settlement currency if available
@@ -360,6 +374,7 @@ def _process_ibkr_trade(msg: UserEmailMessage) -> int:
                             status="confirmed",
                             is_virtual=True,
                             paired_transaction=tx,
+                            category=invest_cat,
                         )
                         logger.info(
                             "✅ CREATED cash leg ibkr:%s amount=%s for %s (msg_id=%s)",
@@ -472,6 +487,7 @@ def _maybe_create_ibkr_deposit_counterpart(user, tx: Tx) -> None:
         status="confirmed",
         is_virtual=True,
         paired_transaction=tx,
+        category=_get_investments_category(user),
         comments=f"Auto-created IBKR deposit counterpart for tx #{tx.pk}",
     )
     logger.info("✅ Created ibkr:USD deposit counterpart for tx id=%s", tx.pk)
