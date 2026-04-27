@@ -497,7 +497,7 @@ def _create_transaction(msg: UserEmailMessage, parsed: dict) -> int:
     """Create a Transaction from parsed email data."""
     external_id = parsed.get("external_id")
 
-    # Check for duplicates
+    # Check for duplicates by external_id
     exists = Tx.objects.filter(user=msg.user, external_id=external_id).exists() if external_id else False
     if exists:
         logger.warning("⚠️  DUPLICATE msg_id=%s external_id=%s → moved to pending",
@@ -518,6 +518,34 @@ def _create_transaction(msg: UserEmailMessage, parsed: dict) -> int:
             tx_date = msg.date.date() if isinstance(msg.date, datetime_class) else msg.date
         else:
             tx_date = date.today()
+
+        # Content-based dedup: same description + amount + currency + date
+        # Catches VISA sending multiple emails for the same charge
+        description = parsed.get("description") or ""
+        amount = parsed.get("amount")
+        currency = (parsed.get("currency") or "").upper()
+        content_dup = Tx.objects.filter(
+            user=msg.user,
+            date=tx_date,
+            description=description,
+            amount=amount,
+            currency=currency,
+        ).first()
+        if content_dup:
+            logger.warning(
+                "⚠️  CONTENT DUPLICATE msg_id=%s matches tx id=%s → moved to pending",
+                msg.message_id, content_dup.id,
+            )
+            PendingTransaction.objects.create(
+                user=msg.user,
+                external_id=external_id or "",
+                payload=parsed,
+                reason="content_duplicate",
+            )
+            msg.processed_at = timezone.now()
+            msg.save(update_fields=["processed_at"])
+            return 1
+
         tx = Tx.objects.create(
             user=msg.user,
             date=tx_date,
