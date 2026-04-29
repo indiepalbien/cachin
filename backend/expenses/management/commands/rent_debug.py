@@ -31,7 +31,7 @@ class Command(BaseCommand):
         for t in all_txs:
             self.stdout.write(
                 f"  id={t.id} date={t.date} amount={t.amount} "
-                f"reimb={t.reimbursable} amort_months={t.amortize_months} "
+                f"reimb={t.is_reimbursable} amort_months={t.amortize_months} "
                 f"amort_start={t.amortize_start_date} "
                 f"desc={t.description[:50]}\n"
             )
