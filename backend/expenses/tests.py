@@ -4,9 +4,10 @@ import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, Client
+from django.urls import reverse
 
-from .models import Budget, BudgetGroup, Category, Transaction
+from .models import Budget, BudgetGroup, Category, Transaction, UserProfile
 from .views import _amortization_covers_month, get_category_expenses
 
 User = get_user_model()
@@ -267,3 +268,66 @@ class BudgetExpensesTests(TestCase):
         self._make_tx(500, "2026-04-01", is_reimbursable=True)
         data = self._call_api(2026, 4)
         self.assertEqual(data["budget_rows"][0]["spent"], "200.00")
+
+
+class TransactionListAmortizationTests(TestCase):
+    """Tests that TransactionListView includes amortized transactions from other months."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="txlistuser", password="pass")
+        UserProfile.objects.update_or_create(user=self.user, defaults={"onboarding_step": 0})
+        self.client = Client()
+        self.client.force_login(self.user, backend='django.contrib.auth.backends.ModelBackend')
+        self.cat = Category.objects.create(user=self.user, name="rent", counts_to_total=True)
+
+    def _make_tx(self, amount, date_str, **kwargs):
+        asd = kwargs.pop("amortize_start_date", None)
+        if asd:
+            asd = datetime.date.fromisoformat(asd)
+        return Transaction.objects.create(
+            user=self.user,
+            amount=Decimal(str(amount)),
+            currency="USD",
+            date=datetime.date.fromisoformat(date_str),
+            description="test",
+            category=self.cat,
+            amortize_start_date=asd,
+            **kwargs,
+        )
+
+    def _get_ids(self, month_str):
+        url = reverse("expenses:manage_transactions")
+        resp = self.client.get(url, {"month": month_str})
+        self.assertEqual(resp.status_code, 200)
+        return {tx.id for tx in resp.context["page_obj"]}
+
+    def test_amortized_tx_from_other_month_appears(self):
+        tx = self._make_tx(1200, "2026-01-15", amortize_months=12, amortize_start_date="2026-01-01")
+        ids = self._get_ids("2026-05")
+        self.assertIn(tx.id, ids)
+
+    def test_amortized_tx_not_shown_after_window(self):
+        tx = self._make_tx(300, "2026-01-01", amortize_months=3, amortize_start_date="2026-01-01")
+        ids = self._get_ids("2026-05")
+        self.assertNotIn(tx.id, ids)
+
+    def test_normal_tx_still_shows_in_its_month(self):
+        tx = self._make_tx(100, "2026-05-10")
+        ids = self._get_ids("2026-05")
+        self.assertIn(tx.id, ids)
+
+    def test_display_amount_is_fraction_for_amortized(self):
+        self._make_tx(1200, "2026-01-15", amortize_months=12, amortize_start_date="2026-01-01")
+        url = reverse("expenses:manage_transactions")
+        resp = self.client.get(url, {"month": "2026-05"})
+        tx = list(resp.context["page_obj"])[0]
+        self.assertEqual(tx.display_amount, Decimal("100.00"))
+        self.assertEqual(tx.amortize_info, "1/12")
+
+    def test_display_amount_is_full_for_normal(self):
+        self._make_tx(500, "2026-05-10")
+        url = reverse("expenses:manage_transactions")
+        resp = self.client.get(url, {"month": "2026-05"})
+        tx = list(resp.context["page_obj"])[0]
+        self.assertEqual(tx.display_amount, Decimal("500"))
+        self.assertEqual(tx.amortize_info, "")

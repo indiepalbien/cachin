@@ -6,7 +6,7 @@ from django.views import generic
 from django.urls import reverse
 from django.conf import settings
 from django.db.models import F, Q, OuterRef, Subquery, Value, DecimalField, ExpressionWrapper, Case, When, Sum
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, ExtractYear, ExtractMonth
 from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
@@ -1055,7 +1055,36 @@ class TransactionListView(OwnerListView):
                 last_day = calendar.monthrange(year, month)[1]
                 start_date = datetime.date(year, month, 1)
                 end_date = datetime.date(year, month, last_day)
-                qs = qs.filter(date__gte=start_date, date__lte=end_date)
+
+                self._filter_year = year
+                self._filter_month = month
+
+                # Next month boundary for exclusion
+                next_y = year + (month // 12)
+                next_m = (month % 12) + 1
+                next_first = datetime.date(next_y, next_m, 1)
+                target_total = year * 12 + month
+
+                # Annotate with amortization window end (total months)
+                # NULL when amortize fields are NULL — harmless in filter
+                qs = qs.annotate(
+                    _amort_end=ExpressionWrapper(
+                        ExtractYear('amortize_start_date') * 12
+                        + ExtractMonth('amortize_start_date')
+                        + F('amortize_months'),
+                        output_field=DecimalField()
+                    )
+                )
+
+                in_month_q = Q(date__gte=start_date, date__lte=end_date)
+                amortized_q = (
+                    Q(amortize_months__isnull=False,
+                      amortize_start_date__isnull=False,
+                      amortize_start_date__lte=start_date,
+                      _amort_end__gt=target_total)
+                    & ~Q(date__gte=start_date, date__lt=next_first)
+                )
+                qs = qs.filter(in_month_q | amortized_q)
             except (ValueError, AttributeError):
                 pass  # Invalid month format, skip filter
 
@@ -1111,6 +1140,18 @@ class TransactionListView(OwnerListView):
             'date_to': self.request.GET.get('date_to', ''),
             'search': self.request.GET.get('search', ''),
         }
+
+        # Annotate transactions with amortized display amounts
+        filter_year = getattr(self, '_filter_year', None)
+        filter_month = getattr(self, '_filter_month', None)
+        if ctx.get('page_obj'):
+            for tx in ctx['page_obj']:
+                if filter_year and filter_month and tx.amortize_months:
+                    tx.display_amount = (tx.amount / tx.amortize_months).quantize(Decimal('0.01'))
+                    tx.amortize_info = f"1/{tx.amortize_months}"
+                else:
+                    tx.display_amount = tx.amount
+                    tx.amortize_info = ""
 
         return ctx
 

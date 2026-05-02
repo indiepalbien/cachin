@@ -219,7 +219,8 @@
             </div>
             <!-- Amount + Currency on mobile, right side on desktop -->
             <div class="font-extrabold text-lg whitespace-nowrap text-muted px-3 py-1 bg-slate-100 rounded shrink-0 ml-auto md:ml-0 order-2 md:order-3">
-              {{ tx.currency }} {{ tx.amount }}
+              {{ tx.currency }} {{ tx.display_amount|default:tx.amount }}
+              {% if tx.amortize_info %}<span class="text-xs font-normal text-slate-400 block">({{ tx.amortize_info }})</span>{% endif %}
             </div>
             <!-- Description - full width on mobile, flex-1 on desktop -->
             <div class="w-full md:flex-1 font-semibold text-base text-muted leading-snug break-words order-3 md:order-2">
